@@ -290,6 +290,9 @@ def _wiederholung(frage, versuche, heute, klausur):
         tag = tag_von(v['zeit'])
         if e != 'richtig':
             leiter, stufe, faellig = True, 0, plus_tage(tag, ABSTAND[e])
+        elif leiter and faellig and tag < faellig:
+            # Richtig vor dem Fälligkeitstag (sofort noch einmal geübt) rückt die Leiter nicht vor
+            continue
         elif leiter:
             stufe += 1
             if stufe <= len(LEITER):
@@ -326,11 +329,22 @@ def leerer_fortschritt(fach):
             'md': {'zeit': None, 'basis': {}, 'ueberschrieben': {}}}
 
 
+def brauchbar(v):
+    """Versuch mit ID als Text, lesbarer Zeit und Wahl als Liste; alles andere wird beim Laden verworfen."""
+    return (isinstance(v, dict) and isinstance(v.get('id'), str) and zeitpunkt(v.get('zeit')) is not None
+            and isinstance(v.get('wahl'), list))
+
+
 def vervollstaendigen(f, fach=None):
-    """Fehlende Teile eines Fortschritts ergänzen, ohne vorhandene zu verändern."""
+    """Fehlende Teile eines Fortschritts ergänzen und unbrauchbare Versuche verwerfen.
+
+    So legt eine beschädigte Datei die Auswertung nicht lahm. Vorhandene brauchbare Teile bleiben unverändert.
+    """
     leer = leerer_fortschritt(fach)
     g = {**leer, **(f or {})}
-    g['versuche'] = dict(g.get('versuche') or {})
+    # Je Frage nur die brauchbaren Versuche; ist der Eintrag keine Liste, bleibt eine leere
+    g['versuche'] = {qid: [v for v in liste if brauchbar(v)] if isinstance(liste, list) else []
+                     for qid, liste in (g.get('versuche') or {}).items()}
     g['schritte'] = dict(g.get('schritte') or {})
     g['md'] = {**leer['md'], **(g.get('md') or {})}
     return g
@@ -343,8 +357,9 @@ def _spaeter(a, b):
 def zusammenfuehren(a, b):
     """Zwei Stände vereinigen.
 
-    Versuche über ihre ID, bei gleicher ID gewinnt das spätere 'geaendert', bei Gleichstand der aus a
-    (so bleiben Grabsteine gelöschter Versuche erhalten). Schritte je Feld nach 'zeit', md-Block als Ganzes.
+    Versuche über ihre ID, bei gleicher ID gewinnt das spätere 'geaendert', bei Gleichstand der aus a.
+    Trägt eine der Fassungen 'geloescht', bleibt der Versuch gelöscht, auch wenn die andere später geändert wurde.
+    Schritte je Feld nach 'zeit', md-Block als Ganzes.
     """
     fach = (a or {}).get('fach') or (b or {}).get('fach')
     a = vervollstaendigen(copy.deepcopy(a or {}), fach)
@@ -355,8 +370,15 @@ def zusammenfuehren(a, b):
         nach_id = {}
         for v in (a['versuche'].get(qid) or []) + (b['versuche'].get(qid) or []):
             da = nach_id.get(v['id'])
-            if da is None or _spaeter(v.get('geaendert'), da.get('geaendert')):
+            if da is None:
                 nach_id[v['id']] = v
+                continue
+            sieger = v if _spaeter(v.get('geaendert'), da.get('geaendert')) else da
+            tod = da.get('geloescht') or v.get('geloescht')
+            if tod and not sieger.get('geloescht'):
+                # {**sieger, ...} = Kopie des Siegers mit gesetztem Löschzeitpunkt
+                sieger = {**sieger, 'geloescht': tod}
+            nach_id[v['id']] = sieger
         aus['versuche'][qid] = sorted(nach_id.values(), key=lambda v: _ms(v.get('zeit')))
     for rang in dict.fromkeys(list(a['schritte']) + list(b['schritte'])):
         sa, sb = a['schritte'].get(rang) or {}, b['schritte'].get(rang) or {}
@@ -376,7 +398,8 @@ def _gleiche_wahl(a, b):
 
 def _uebernehmen(f, q, m, md_zeit, jetzt):
     # Änderung aus Docs als Versuch übernehmen. Gleiche Wahl wie zuletzt: nur die Merkmale anpassen.
-    # Die ID aus Frage, Zustand und Zeit der .md verhindert, dass zwei Geräte denselben Haken doppelt anlegen.
+    # Die ID aus Frage, Zustand und Zahl der bisherigen Versuche ist auf jedem Gerät gleich, so legen zwei Geräte
+    # denselben Haken nicht doppelt an, auch wenn sie die .md zu verschiedenen Zeiten lesen.
     letzter = letzter_versuch(f, q['id'])
     if letzter and _gleiche_wahl(letzter.get('wahl'), m['wahl']):
         if bool(letzter.get('unsicher')) != m['unsicher'] or bool(letzter.get('falsch')) != m['falsch']:
@@ -385,8 +408,8 @@ def _uebernehmen(f, q, m, md_zeit, jetzt):
             letzter['geaendert'] = jetzt
         return
     zeit = md_zeit or jetzt
-    vid = f"docs:{q['id']}:{schluessel(m)}:{zeit}"
     liste = f['versuche'].setdefault(q['id'], [])
+    vid = f"docs:{q['id']}:{schluessel(m)}:{len(gueltige(liste))}"
     if any(v.get('id') == vid for v in liste):
         return
     liste.append({'id': vid, 'zeit': zeit, 'wahl': list(m['wahl']), 'unsicher': m['unsicher'], 'falsch': m['falsch'],
@@ -407,7 +430,7 @@ def abgleichen(fortschritt, md_text, md_zeit, fragen, jetzt):
     basis = f['md'].get('basis') or {}
     ueb = f['md'].get('ueberschrieben') or {}
     neue_basis, neue_ueb = {}, copy.deepcopy(ueb)
-    soll, geaendert, geleert = {}, [], 0
+    soll, geaendert, geleert = {}, [], []
     for q in ix['beantwortbar']:
         qid = q['id']
         # Unlesbar oder nicht im Lernskript: nichts übernehmen, nichts schreiben, basis bleibt
@@ -416,6 +439,11 @@ def abgleichen(fortschritt, md_text, md_zeit, fragen, jetzt):
                 neue_basis[qid] = basis[qid]
             continue
         m = zustaende[qid]
+        # Nur unsicher oder falsch angehakt, aber noch keine Option: Docs ist mitten in einer Antwort, abwarten
+        if q['optionen'] and not m['wahl'] and (m['unsicher'] or m['falsch']):
+            if basis.get(qid):
+                neue_basis[qid] = basis[qid]
+            continue
         km, kb = schluessel(m), basis.get(qid) or LEER
         # Neu in Docs angehakt und keine alte, von der App überschriebene Fassung: als Versuch übernehmen
         if km != kb and km != LEER and km not in (ueb.get(qid) or []):
@@ -429,19 +457,25 @@ def abgleichen(fortschritt, md_text, md_zeit, fragen, jetzt):
             soll[qid] = s
             # [km] + alte ohne km, höchstens drei
             neue_ueb[qid] = ([km] + [k for k in (neue_ueb.get(qid) or []) if k != km])[:3]
-            if ks == LEER:
-                geleert += 1
+            # Geleert ohne jeden Versuch, auch ohne Grabstein: Die App kennt die Antwort gar nicht
+            if ks == LEER and not f['versuche'].get(qid):
+                geleert.append(q)
         if ks != LEER:
             neue_basis[qid] = ks
-    # Schutz: Würden zu viele Fragen in der .md geleert, ist eher der Fortschritt verloren als die Haken falsch
-    if geleert > SCHUTZ_GELEERT:
+    # Schutz: Würden zu viele unbekannte Antworten geleert, ist eher der Fortschritt verloren als die Haken falsch.
+    # Die Meldung nennt bis zu acht Fragen als Thema.Nr
+    if len(geleert) > SCHUTZ_GELEERT:
         f['md'] = md_alt
+        liste = ', '.join(f"{ix['fragen'][q['id']]['thema']['rang']}.{q['nr']}" for q in geleert[:8])
+        rest = ' …' if len(geleert) > 8 else ''
         return {'fortschritt': f, 'md_neu': None, 'geaendert': [], 'fehler': fehler,
-                'abbruch': f'Abgleich angehalten: {geleert} Fragen würden in der .md geleert', 'md_alt': md_alt}
+                'abbruch': f'Abgleich angehalten: {len(geleert)} Fragen würden in der .md geleert ({liste}{rest})',
+                'md_alt': md_alt}
     f['md'] = {'zeit': jetzt, 'basis': neue_basis, 'ueberschrieben': neue_ueb}
-    md_neu = lernskript_schreiben(md_text, orte, soll) if geaendert else None
-    return {'fortschritt': f, 'md_neu': md_neu, 'geaendert': geaendert, 'fehler': fehler, 'abbruch': None,
-            'md_alt': md_alt}
+    # Neuer Text nur, wenn er sich vom gelesenen unterscheidet
+    neu = lernskript_schreiben(md_text, orte, soll) if geaendert else md_text
+    return {'fortschritt': f, 'md_neu': neu if neu != md_text else None, 'geaendert': geaendert, 'fehler': fehler,
+            'abbruch': None, 'md_alt': md_alt}
 
 
 # ---------- Plan ----------
@@ -472,8 +506,9 @@ def tempo(daten, f, heute):
     """Erster Durchgang: offene Pflichtfragen bis sieben Tage vor der Klausur, daraus Fragen pro Tag."""
     ziel = plus_tage(daten['klausur'], -7)
     tage = max(1, tage_zwischen(heute, ziel) + 1)
-    # Zählt je Pflichtthema die Fragen ohne Bruchstücke, zu denen es noch keinen gültigen Versuch gibt
+    # Zählt je Pflichtthema die Fragen ohne Bruchstücke, zu denen es noch keinen gültigen Versuch mit Ergebnis gibt;
+    # any(..) = wahr, wenn mindestens ein Versuch ein Ergebnis hat
     offen = sum(1 for t, optional in plan_liste(daten) if not optional for q in t['fragen']
-                if q['typ'] != 'fragment' and not gueltige(f['versuche'].get(q['id'])))
+                if q['typ'] != 'fragment' and not any(ergebnis(q, v) for v in gueltige(f['versuche'].get(q['id']))))
     return {'ziel': ziel, 'tage': tage, 'offen': offen, 'pro_tag': math.ceil(offen / tage),
             'bis_klausur': tage_zwischen(heute, daten['klausur'])}

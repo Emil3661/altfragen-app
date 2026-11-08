@@ -190,15 +190,10 @@ def bauen(fach, fehler):
 
 LOESUNG = re.compile(r'^\*\*Lösung:\*\*\s*(.*?)\s*$')
 NICHT_UEBERLIEFERT = re.compile(r'^\*\*Lösung nicht überliefert\*\*')
-# Merkmal-Kästchen, an das Google Docs den folgenden Absatz angehängt hat ("*unsicher* **Hinweis:** …")
-ANGEHAENGT = re.compile(r'^\*(unsicher|falsch)\*\s+(.+)$')
 
 
 def md_fragen(text):
-    """Alle Fragen der .md mit Thema, Nummer, Stamm, Optionstexten, Merkmalen und Lösungszeile, in Dateireihenfolge.
-
-    'angehaengt' sammelt Merkmal-Kästchen mit angehängtem Text: Die App kann solche Fragen nicht lesen.
-    """
+    """Alle Fragen der .md mit Thema, Nummer, Stamm, Optionstexten, Merkmalen und Lösungszeile, in Dateireihenfolge."""
     aus, rang, akt = [], None, None
     for i, roh in enumerate(text.split('\n')):
         z = roh.removesuffix('\r')
@@ -212,20 +207,19 @@ def md_fragen(text):
         m = kern.FRAGE.match(z)
         if m:
             akt = {'rang': rang, 'nr': int(m.group(1)), 'zeile': i + 1, 'stamm': None, 'optionen': [],
-                   'merkmale': [], 'angehaengt': [], 'loesung': None, 'nicht_ueberliefert': False}
+                   'merkmale': [], 'loesung': None, 'nicht_ueberliefert': False}
             aus.append(akt)
             continue
         if akt is None:
             continue
         m = kern.KASTEN.match(z)
         if m:
-            inhalt = kern.normal(m.group(4))
-            n = ANGEHAENGT.match(inhalt)
-            if n:
-                akt['merkmale'].append(n.group(1))
-                akt['angehaengt'].append((i + 1, inhalt))
+            # Merkmal wie beim Lesen in der App (auch mit angehängtem Folgeabsatz), sonst Option
+            rolle = kern.merkmal(m.group(4))
+            if rolle:
+                akt['merkmale'].append(rolle)
             else:
-                (akt['merkmale'] if inhalt in ('unsicher', 'falsch') else akt['optionen']).append(inhalt)
+                akt['optionen'].append(kern.normal(m.group(4)))
             continue
         m = LOESUNG.match(z)
         if m and akt['loesung'] is None:
@@ -241,11 +235,8 @@ def md_fragen(text):
 
 
 def lernskript_pruefen(daten, text):
-    """Vergleicht jede Frage mit dem Lernskript über (Thema, Nummer).
-
-    Raus: (Abweichungen, Warnungen). Warnungen betreffen nur die Darstellung im Lernskript, nicht die Zuordnung.
-    """
-    abw, warn = [], []
+    """Vergleicht jede Frage mit dem Lernskript über (Thema, Nummer). Raus: Liste der Abweichungen."""
+    abw = []
     md = {}
     for f in md_fragen(text):
         if f['rang'] is None:
@@ -263,9 +254,6 @@ def lernskript_pruefen(daten, text):
             if f is None:
                 abw.append(f'{ort}: nicht im Lernskript')
                 continue
-            for zeile, inhalt in f['angehaengt']:
-                warn.append(f'{ort}, Zeile {zeile}: Kästchen und Folgeabsatz in einer Zeile ({inhalt[:50]}…). '
-                            'Die App meldet die Frage als Lesefehler, bis im Lernskript ein Zeilenumbruch dahinter steht')
             if kern.normal(f['stamm']) != kern.normal(q['stamm']):
                 abw.append(f'{ort}: Stamm weicht ab: {f["stamm"]!r} / {q["stamm"]!r}')
             # Optionen nach normal() in gleicher Reihenfolge; [.. for o in ..] = Liste der normalisierten Texte
@@ -291,7 +279,7 @@ def lernskript_pruefen(daten, text):
     for (rang, nr), f in md.items():
         if (rang, nr) not in gebaut:
             abw.append(f'Zeile {f["zeile"]}: Frage {rang}#{nr} im Lernskript ohne Gegenstück')
-    return abw, warn
+    return abw
 
 
 # ---------- Probeklausuren zuordnen ----------
@@ -381,13 +369,12 @@ def main(argv):
         return 2
     fach = argv[1]
     cfg = FAECHER[fach]
-    fehler, warnungen = [], []
+    fehler = []
     daten, roh, leer = bauen(fach, fehler)
 
     # Prüfung gegen das echte Lernskript (so, wie es zuletzt gespeichert wurde)
     if os.path.exists(cfg['lernskript']):
-        abw, warnungen = lernskript_pruefen(daten, lesen(cfg['lernskript']))
-        fehler += abw
+        fehler += lernskript_pruefen(daten, lesen(cfg['lernskript']))
     else:
         fehler.append(f'Lernskript fehlt: {cfg["lernskript"]}')
 
@@ -401,10 +388,6 @@ def main(argv):
         fehler += abw
         daten['probeklausuren'].append({'name': name, 'minuten': cfg['minuten'], 'fragen': ids})
 
-    if warnungen:
-        print(f'{len(warnungen)} Warnungen zum Lernskript:')
-        for w in warnungen:
-            print('  ' + w)
     if fehler:
         print(f'{len(fehler)} Abweichungen, nichts geschrieben:')
         for f in fehler:

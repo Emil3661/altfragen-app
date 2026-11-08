@@ -4,7 +4,8 @@ Die App sieht nur Dateien, die JARVIS angelegt hat. Deshalb entstehen alle App-D
 Erkannt werden sie an appProperties (altfragenApp = Rolle, fach = Kürzel), nicht am Namen.
 
 Aufruf:
-  python veroeffentlichen.py fragen mibi innere     build/fragen-<fach>.json hochladen, Fortschritt leer anlegen falls neu, Konfiguration schreiben
+  python veroeffentlichen.py fragen mibi innere     build/fragen-<fach>.json hochladen, Fortschritt leer anlegen falls neu, Konfiguration schreiben.
+                                                    Bricht ab, wenn eine Frage-ID neuen Inhalt hätte (--erzwingen übergeht das)
   python veroeffentlichen.py lernskript <fach> <datei.md> <ordner-id>
                                                     Lernskript als neue JARVIS-Datei in den Ordner legen (einmalig je Fach)
   python veroeffentlichen.py liste                  alle App-Dateien mit ID und Änderungszeit
@@ -32,7 +33,7 @@ FAECHER = {"mibi": "MiBi Teil 1", "innere": "Innere Teil 1"}
 
 # Zugang aus dem Skill aufgaben übernehmen: dieselbe Client-Datei, derselbe erneuerbare Schlüssel
 sys.path.insert(0, str(Path(r"G:/Meine Ablage/2nd Brain/.claude/skills/aufgaben/skripte")))
-import aufgaben  # noqa: E402
+import aufgaben
 
 
 class Fehler(Exception):
@@ -71,7 +72,7 @@ def anlegen(name: str, inhalt: bytes, mime: str, eltern: list[str], eigenschafte
     koerper = (
         f"--{grenze}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{json.dumps(meta)}\r\n"
         f"--{grenze}\r\nContent-Type: {mime}\r\n\r\n"
-    ).encode("utf-8") + inhalt + f"\r\n--{grenze}--\r\n".encode("utf-8")
+    ).encode() + inhalt + f"\r\n--{grenze}--\r\n".encode()
     url = f"{UPLOAD}/files?uploadType=multipart&fields=id,name,modifiedTime,md5Checksum"
     return anfrage("POST", url, koerper, f"multipart/related; boundary={grenze}")
 
@@ -101,16 +102,41 @@ def app_ordner() -> str:
     return neu["id"]
 
 
-def fragen_veroeffentlichen(faecher: list[str]) -> None:
-    """Fragen hochladen, leeren Fortschritt nur anlegen, wenn es noch keinen gibt, dann die Konfiguration."""
+def kennung(frage: dict) -> tuple:
+    """Was eine Frage ausmacht: Stamm und Menge der Optionstexte, ohne Leerraum-Unterschiede."""
+    def rein(t):
+        return " ".join(str(t or "").split())
+    return rein(frage.get("stamm")), frozenset(rein(o["t"]) for o in frage.get("optionen") or [])
+
+
+def ids_pruefen(alt: dict, neu: dict) -> list[str]:
+    """Frage-IDs, die es in beiden Fassungen gibt, aber mit anderem Inhalt. Der Lernstand hängt an der ID,
+    eine verschobene ID würde Antworten einer anderen Frage zuordnen."""
+    # {id: Frage} je Fassung, über alle Themen
+    alte = {q["id"]: q for t in alt.get("themen", []) for q in t["fragen"]}
+    neue = {q["id"]: q for t in neu.get("themen", []) for q in t["fragen"]}
+    return sorted(i for i in alte.keys() & neue.keys() if kennung(alte[i]) != kennung(neue[i]))
+
+
+def fragen_veroeffentlichen(faecher: list[str], erzwingen: bool = False) -> None:
+    """Fragen hochladen, leeren Fortschritt nur anlegen, wenn es noch keinen gibt, dann die Konfiguration.
+    Hat eine bestehende Frage-ID neuen Inhalt, bricht es ab, außer mit --erzwingen."""
     ordner = app_ordner()
     for fach in faecher:
         quelle = BUILD / f"fragen-{fach}.json"
         if not quelle.exists():
             raise Fehler(f"{quelle} fehlt, zuerst bauen.py {fach}")
         inhalt = quelle.read_bytes()
-        json.loads(inhalt)
+        neu = json.loads(inhalt)
         da = einzeln(finden("fragen", fach), f"Fragen {fach}")
+        if da and da.get("md5Checksum") != hashlib.md5(inhalt).hexdigest():
+            # Drive liefert JSON-Dateien schon als dict, andere Inhalte als Bytes
+            roh = anfrage("GET", f"{API}/files/{da['id']}?alt=media")
+            alt = roh if isinstance(roh, dict) else json.loads(roh)
+            anders = ids_pruefen(alt, neu)
+            if anders and not erzwingen:
+                raise Fehler(f"{fach}: {len(anders)} Frage-IDs mit anderem Inhalt, der Lernstand würde verrutschen: "
+                             + ", ".join(anders[:20]) + (" …" if len(anders) > 20 else ""))
         if da and da.get("md5Checksum") == hashlib.md5(inhalt).hexdigest():
             print(f"{fach}: Fragen unverändert")
         elif da:
@@ -173,11 +199,12 @@ def main() -> None:
     befehl = sys.argv[1:2]
     try:
         if befehl == ["fragen"]:
-            faecher = sys.argv[2:] or list(FAECHER)
+            erzwingen = "--erzwingen" in sys.argv
+            faecher = [a for a in sys.argv[2:] if a != "--erzwingen"] or list(FAECHER)
             unbekannt = [f for f in faecher if f not in FAECHER]
             if unbekannt:
                 raise Fehler("unbekanntes Fach: " + ", ".join(unbekannt))
-            fragen_veroeffentlichen(faecher)
+            fragen_veroeffentlichen(faecher, erzwingen)
         elif befehl == ["lernskript"] and len(sys.argv) == 5:
             lernskript_anlegen(sys.argv[2], sys.argv[3], sys.argv[4])
         elif befehl == ["liste"]:

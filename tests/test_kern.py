@@ -239,6 +239,40 @@ class Schutz(unittest.TestCase):
         self.assertEqual(r['md_neu'].count('- [x]'), 0)
         self.assertEqual(r['fortschritt']['md']['basis'], {})
 
+    def test_sechs_zurueckgenommene_antworten_halten_nicht_an(self):
+        # Jede Antwort steht als Grabstein im Fortschritt: Die App kennt sie und hat sie bewusst zurückgenommen
+        daten, md, f = viele_fragen(6)
+        f['versuche'] = {f'1.Q{i:02d}': [app_versuch(f'a{i}', '2026-11-08T19:00:00Z', ['A'],
+                                                     geloescht='2026-11-08T20:30:00Z')] for i in range(1, 7)}
+        r = kern.abgleichen(f, md, '2026-11-08T21:00:00Z', daten, '2026-11-08T21:05:00Z')
+        self.assertIsNone(r['abbruch'])
+        self.assertEqual(len(r['geaendert']), 6)
+        self.assertEqual(r['md_neu'].count('- [x]'), 0)
+
+    def test_meldung_nennt_bis_zu_acht_fragen(self):
+        daten, md, f = viele_fragen(9)
+        r = kern.abgleichen(f, md, '2026-11-08T21:00:00Z', daten, '2026-11-08T21:05:00Z')
+        self.assertEqual(r['abbruch'], 'Abgleich angehalten: 9 Fragen würden in der .md geleert '
+                                       '(1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8 …)')
+
+    def test_nur_unsicher_ohne_option_wartet(self):
+        # Docs mitten in einer Antwort: kein Import, kein Umschreiben, basis bleibt
+        md = MD.replace('- [ ] *unsicher*\n\n*2425-03', '- [x] *unsicher*\n\n*2425-03', 1)
+        self.assertNotEqual(md, MD)
+        f = {'versuche': {}, 'md': {'zeit': None, 'basis': {'1.Q02': 'Gurke#u0f0'}, 'ueberschrieben': {}}}
+        r = kern.abgleichen(f, md, '2026-11-08T17:25:00.000Z', DATEN, '2026-11-08T21:10:00.000Z')
+        self.assertNotIn('1.Q02', r['geaendert'])
+        self.assertNotIn('1.Q02', r['fortschritt']['versuche'])
+        self.assertEqual(r['fortschritt']['md']['basis']['1.Q02'], 'Gurke#u0f0')
+
+    def test_kein_neuer_text_ohne_unterschied(self):
+        # Soll mit falsch-Merkmal bei einer Frage ohne falsch-Kästchen: abweichend, aber nichts zu schreiben
+        f = {'versuche': {'1.Q01': [app_versuch('a', '2026-11-08T21:00:00Z', ['Apfel'], unsicher=True, falsch=True)]},
+             'md': {'zeit': None, 'basis': {'1.Q01': 'Apfel#u1f0'}, 'ueberschrieben': {}}}
+        r = kern.abgleichen(f, MD, '2026-11-08T17:25:00.000Z', DATEN, '2026-11-08T21:10:00.000Z')
+        self.assertIn('1.Q01', r['geaendert'])
+        self.assertIsNone(r['md_neu'])
+
 
 class Zusammenfuehren(unittest.TestCase):
 
@@ -276,6 +310,44 @@ class Zusammenfuehren(unittest.TestCase):
             self.assertEqual(r['schritte']['2']['kern']['wert'], 'ja')
             self.assertEqual(r['md'], b['md'])
 
+    def test_grabstein_bleibt_auch_bei_spaeterer_aenderung(self):
+        # Gerät A nimmt zurück, Gerät B ändert danach noch das Merkmal: gelöscht bleibt gelöscht
+        grab = app_versuch('v1', '2026-11-08T10:00:00Z', ['Apfel'], geloescht='2026-11-08T11:00:00Z',
+                           geaendert='2026-11-08T11:00:00Z')
+        spaeter = app_versuch('v1', '2026-11-08T10:00:00Z', ['Apfel'], unsicher=True, geaendert='2026-11-08T12:00:00Z')
+        for a, b in ((grab, spaeter), (spaeter, grab)):
+            with self.subTest(erst=a['geaendert']):
+                r = kern.zusammenfuehren({'versuche': {'1.Q01': [a]}}, {'versuche': {'1.Q01': [b]}})
+                v, = r['versuche']['1.Q01']
+                self.assertEqual(v['geloescht'], '2026-11-08T11:00:00Z')
+                self.assertTrue(v['unsicher'])
+                self.assertEqual(kern.gueltige(r['versuche']['1.Q01']), [])
+
+    def test_zwei_geraete_lesen_denselben_haken_zu_verschiedenen_zeiten(self):
+        # Beide Geräte übernehmen dieselbe .md mit verschiedener modifiedTime; danach je Frage ein Versuch
+        leer = kern.leerer_fortschritt('test')
+        a = kern.abgleichen(leer, MD, '2026-11-08T17:25:00.000Z', DATEN, '2026-11-08T21:00:00.000Z')
+        b = kern.abgleichen(leer, MD, '2026-11-08T18:40:00.000Z', DATEN, '2026-11-08T22:00:00.000Z')
+        r = kern.zusammenfuehren(a['fortschritt'], b['fortschritt'])
+        # {qid: [..]} = je Frage die IDs der Versuche
+        self.assertEqual({qid: [v['id'] for v in vs] for qid, vs in r['versuche'].items()},
+                         {'1.Q01': ['docs:1.Q01:Apfel#u1f0:0'], '1.Q03': ['docs:1.Q03:#u0f1:0'],
+                          '2.Q01': ['docs:2.Q01:Erbse|Gurke#u0f0:0']})
+
+    def test_docs_id_zaehlt_die_gueltigen_versuche_davor(self):
+        f = {'versuche': {'1.Q01': [app_versuch('a1', '2026-11-08T20:00:00Z', ['Apfel']),
+                                    app_versuch('a2', '2026-11-08T20:10:00Z', ['Kiwi'], geloescht='2026-11-08T20:11:00Z')]},
+             'md': {'zeit': None, 'basis': {}, 'ueberschrieben': {}}}
+        md = MD.replace('- [ ] Banane  ', '- [x] Banane  ', 1).replace('- [x] Apfel  ', '- [ ] Apfel  ', 1)
+        r = kern.abgleichen(f, md, '2026-11-08T21:20:00.000Z', DATEN, '2026-11-08T21:25:00.000Z')
+        self.assertEqual(r['fortschritt']['versuche']['1.Q01'][-1]['id'], 'docs:1.Q01:Banane#u1f0:1')
+
+    def test_unbrauchbare_versuche_werden_verworfen(self):
+        gut = app_versuch('v1', '2026-11-08T10:00:00Z', ['Apfel'])
+        kaputt = [dict(gut, id=5), dict(gut, zeit='gestern'), dict(gut, zeit=None), dict(gut, wahl='Apfel'), None, 'x']
+        r = kern.zusammenfuehren({'versuche': {'1.Q01': [gut] + kaputt, '1.Q02': 'keine Liste'}}, {})
+        self.assertEqual(r['versuche'], {'1.Q01': [gut], '1.Q02': []})
+
     def test_eingaenge_bleiben_unveraendert(self):
         a = {'versuche': {'1.Q01': [app_versuch('v1', '2026-11-08T10:00:00Z', ['Apfel'])]}}
         b = copy.deepcopy(a)
@@ -298,6 +370,11 @@ class Plan(unittest.TestCase):
     def test_tempo(self):
         tp = kern.tempo(DATEN, kern.leerer_fortschritt('test'), '2026-11-09')
         self.assertEqual((tp['ziel'], tp['tage'], tp['offen'], tp['pro_tag']), ('2027-02-05', 89, 4, 1))
+        # Ein Versuch ohne Ergebnis (nur unsicher, keine Option) macht die Frage nicht beantwortet
+        f = kern.leerer_fortschritt('test')
+        f['versuche'] = {'1.Q01': [app_versuch('a', '2026-11-08T10:00:00Z', [], unsicher=True)],
+                         '1.Q02': [app_versuch('b', '2026-11-08T10:00:00Z', ['Gurke'])]}
+        self.assertEqual(kern.tempo(DATEN, f, '2026-11-09')['offen'], 3)
 
 
 if __name__ == '__main__':

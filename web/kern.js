@@ -170,6 +170,7 @@ const Kern = (() => {
 
   // ---------- Wiederholung ----------
   // Leiter wie in FORMAT.md: falsch 2 Tage, unsicher 3 Tage, danach richtig 7 und 21 Tage, dann fertig.
+  // Richtig vor dem Fälligkeitstag (sofort noch einmal geübt) rückt die Leiter nicht vor.
   // Fälligkeit höchstens zwei Tage vor der Klausur, aber nie vor dem Folgetag des Versuchs.
   const ABSTAND = { falsch: 2, unsicher: 3 };
   const LEITER = [7, 21];
@@ -185,6 +186,8 @@ const Kern = (() => {
       const tag = tagVon(v.zeit);
       if (e !== 'richtig') {
         leiter = true; stufe = 0; faellig = plusTage(tag, ABSTAND[e]);
+      } else if (leiter && faellig && tag < faellig) {
+        continue;
       } else if (leiter) {
         stufe += 1;
         if (stufe <= LEITER.length) faellig = plusTage(tag, LEITER[stufe - 1]);
@@ -207,10 +210,16 @@ const Kern = (() => {
   function leererFortschritt(fach) {
     return { format: 1, fach, versuche: {}, schritte: {}, md: { zeit: null, basis: {}, ueberschrieben: {} } };
   }
+  // Fehlende Teile ergänzen und unbrauchbare Versuche (ohne ID, Zeit oder Wahl) verwerfen,
+  // damit eine beschädigte Datei die App nicht lahmlegt.
+  function brauchbar(v) {
+    return !!v && typeof v.id === 'string' && !Number.isNaN(Date.parse(v.zeit)) && Array.isArray(v.wahl);
+  }
   function vervollstaendigen(f, fach) {
     const leer = leererFortschritt(fach);
     const g = { ...leer, ...(f || {}) };
-    g.versuche = { ...(g.versuche || {}) };
+    g.versuche = Object.fromEntries(Object.entries(g.versuche || {})
+      .map(([id, liste]) => [id, Array.isArray(liste) ? liste.filter(brauchbar) : []]));
     g.schritte = { ...(g.schritte || {}) };
     g.md = { ...leer.md, ...(g.md || {}) };
     return g;
@@ -222,8 +231,9 @@ const Kern = (() => {
     return (Date.parse(a || 0) || 0) > (Date.parse(b || 0) || 0);
   }
 
-  // Zwei Stände vereinigen: Versuche über ihre ID, bei gleicher ID gewinnt das spätere "geaendert"
-  // (so bleiben Grabsteine gelöschter Versuche erhalten). Schritte je Feld, md-Block als Ganzes.
+  // Zwei Stände vereinigen: Versuche über ihre ID, bei gleicher ID gewinnt das spätere "geaendert".
+  // Ein Grabstein bleibt immer erhalten, auch wenn die andere Fassung später geändert wurde.
+  // Schritte je Feld, md-Block als Ganzes.
   function zusammenfuehren(a, b) {
     const fach = (a && a.fach) || (b && b.fach);
     a = vervollstaendigen(kopie(a || {}), fach);
@@ -233,7 +243,11 @@ const Kern = (() => {
       const nachId = new Map();
       for (const v of [...(a.versuche[id] || []), ...(b.versuche[id] || [])]) {
         const da = nachId.get(v.id);
-        if (!da || spaeter(v.geaendert, da.geaendert)) nachId.set(v.id, v);
+        if (!da) { nachId.set(v.id, v); continue; }
+        let sieger = spaeter(v.geaendert, da.geaendert) ? v : da;
+        const tod = da.geloescht || v.geloescht;
+        if (tod && !sieger.geloescht) sieger = { ...sieger, geloescht: tod };
+        nachId.set(v.id, sieger);
       }
       aus.versuche[id] = [...nachId.values()].sort((x, y) => Date.parse(x.zeit) - Date.parse(y.zeit));
     }
@@ -266,7 +280,7 @@ const Kern = (() => {
     const neueUeb = kopie(ueb);
     const soll = {};
     const geaendert = [];
-    let geleert = 0;
+    const geleert = [];
     for (const q of ix.beantwortbar) {
       // Unlesbar oder nicht im Lernskript: nichts übernehmen, nichts schreiben, basis bleibt
       if (kaputt.has(q.id) || !zustaende[q.id]) {
@@ -274,6 +288,11 @@ const Kern = (() => {
         continue;
       }
       const m = zustaende[q.id];
+      // Nur "unsicher" angehakt, aber noch keine Option: Docs ist mitten in einer Antwort, abwarten
+      if (q.optionen.length && !m.wahl.length && (m.unsicher || m.falsch)) {
+        if (basis[q.id]) neueBasis[q.id] = basis[q.id];
+        continue;
+      }
       const km = schluessel(m);
       const kb = basis[q.id] || LEER;
       if (km !== kb && km !== LEER && !(ueb[q.id] || []).includes(km)) {
@@ -286,21 +305,24 @@ const Kern = (() => {
         geaendert.push(q.id);
         soll[q.id] = s;
         neueUeb[q.id] = [km, ...(neueUeb[q.id] || []).filter(k => k !== km)].slice(0, 3);
-        if (ks === LEER) geleert += 1;
+        // Geleert ohne Grabstein heißt: Die App kennt die Antwort gar nicht. Zurückgenommene zählen nicht
+        if (ks === LEER && !(f.versuche[q.id] || []).length) geleert.push(q);
       }
       if (ks !== LEER) neueBasis[q.id] = ks;
     }
-    if (geleert > SCHUTZ_GELEERT) {
+    if (geleert.length > SCHUTZ_GELEERT) {
       f.md = mdAlt;
-      return { fortschritt: f, mdNeu: null, geaendert: [], fehler, abbruch: `Abgleich angehalten: ${geleert} Fragen würden in der .md geleert`, mdAlt };
+      const liste = geleert.slice(0, 8).map(q => `${ix.fragen.get(q.id).thema.rang}.${q.nr}`).join(', ');
+      return { fortschritt: f, mdNeu: null, geaendert: [], fehler, abbruch: `Abgleich angehalten: ${geleert.length} Fragen würden in der .md geleert (${liste}${geleert.length > 8 ? ' …' : ''})`, mdAlt };
     }
     f.md = { zeit: jetzt, basis: neueBasis, ueberschrieben: neueUeb };
-    const mdNeu = geaendert.length ? lernskriptSchreiben(mdText, orte, soll) : null;
-    return { fortschritt: f, mdNeu, geaendert, fehler, abbruch: null, mdAlt };
+    const neu = geaendert.length ? lernskriptSchreiben(mdText, orte, soll) : mdText;
+    return { fortschritt: f, mdNeu: neu !== mdText ? neu : null, geaendert, fehler, abbruch: null, mdAlt };
   }
 
   // Änderung aus Docs als Versuch übernehmen. Gleiche Wahl wie zuletzt: nur die Merkmale anpassen.
-  // Die ID aus Frage, Zustand und Zeit der .md verhindert, dass zwei Geräte denselben Haken doppelt anlegen.
+  // Die ID aus Frage, Zustand und Zahl der bisherigen Versuche ist auf jedem Gerät gleich,
+  // so legen zwei Geräte denselben Haken nicht doppelt an, auch wenn sie die .md zu verschiedenen Zeiten lesen.
   function uebernehmen(f, q, m, mdZeit, jetzt) {
     const letzter = letzterVersuch(f, q.id);
     if (letzter && gleicheWahl(letzter.wahl, m.wahl)) {
@@ -312,8 +334,8 @@ const Kern = (() => {
       return;
     }
     const zeit = mdZeit || jetzt;
-    const id = `docs:${q.id}:${schluessel(m)}:${zeit}`;
     const liste = f.versuche[q.id] || (f.versuche[q.id] = []);
+    const id = `docs:${q.id}:${schluessel(m)}:${gueltige(liste).length}`;
     if (liste.some(v => v.id === id)) return;
     liste.push({ id, zeit, wahl: [...m.wahl], unsicher: m.unsicher, falsch: m.falsch, quelle: 'docs', geaendert: jetzt, geloescht: null });
   }
@@ -435,7 +457,7 @@ const Kern = (() => {
     for (const p of planListe(daten)) {
       if (p.optional) continue;
       for (const q of p.thema.fragen) {
-        if (q.typ !== 'fragment' && !gueltige(f.versuche[q.id]).length) offen += 1;
+        if (q.typ !== 'fragment' && !gueltige(f.versuche[q.id]).some(v => ergebnis(q, v))) offen += 1;
       }
     }
     return { ziel, tage, offen, proTag: Math.ceil(offen / tage), bisKlausur: tageZwischen(heute, daten.klausur) };

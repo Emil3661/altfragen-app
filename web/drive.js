@@ -8,6 +8,7 @@ const Drive = (() => {
   let client = null;
   let zugang = null;
   let wartend = null;
+  let nachAnmeldung = null;
 
   // Gespeicherten Schlüssel dieses Tabs übernehmen, falls er noch mindestens eine Minute gilt.
   try {
@@ -27,15 +28,16 @@ const Drive = (() => {
         client = google.accounts.oauth2.initTokenClient({
           client_id: clientId,
           scope: bereich,
+          // Ein Schlüssel wird immer übernommen, auch wenn Google das Fenster vorher als geschlossen gemeldet hat
+          // (im installierten Modus kann GIS den Fensterzustand nicht immer lesen)
           callback: antwort => {
-            if (!wartend) return;
             const w = wartend;
             wartend = null;
-            if (antwort.error || !antwort.access_token) { w.fehler(new Error(antwort.error || 'keine Anmeldung')); return; }
+            if (antwort.error || !antwort.access_token) { if (w) w.fehler(new Error(antwort.error || 'keine Anmeldung')); return; }
             zugang = { token: antwort.access_token, ablauf: Date.now() + Number(antwort.expires_in || 3600) * 1000 };
             try { sessionStorage.setItem(MERKER, JSON.stringify(zugang)); } catch (e) { /* ohne Speicher gilt der Schlüssel nur bis zum Neuladen */ }
-            try { localStorage.setItem('altfragen_angemeldet', '1'); } catch (e) { /* nur Hinweis für die Startseite */ }
-            w.fertig();
+            if (w) w.fertig();
+            else if (nachAnmeldung) nachAnmeldung();
           },
           error_callback: f => {
             if (!wartend) return;
@@ -68,7 +70,10 @@ const Drive = (() => {
   function abmelden() {
     if (zugang && window.google) google.accounts.oauth2.revoke(zugang.token, () => {});
     zugang = null;
-    try { sessionStorage.removeItem(MERKER); localStorage.removeItem('altfragen_angemeldet'); } catch (e) { /* nichts zu tun */ }
+    try { sessionStorage.removeItem(MERKER); } catch (e) { /* nichts zu tun */ }
+  }
+  function beiAnmeldung(f) {
+    nachAnmeldung = f;
   }
 
   // Eine Anfrage an Drive. 401 = Schlüssel abgelaufen: verwerfen, damit die App neu fragt.
@@ -110,5 +115,5 @@ const Drive = (() => {
     return (await anfrage(url, { method: 'PATCH', headers: { 'Content-Type': mime + '; charset=UTF-8' }, body: text })).json();
   }
 
-  return { vorbereiten, anmelden, abmelden, gueltig, suchen, metadaten, lesen, schreiben };
+  return { vorbereiten, anmelden, abmelden, beiAnmeldung, gueltig, suchen, metadaten, lesen, schreiben };
 })();

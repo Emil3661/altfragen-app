@@ -1,39 +1,394 @@
 [
-  {"name": "ohne Versuch neu", "frage": "1.Q01", "heute": "2026-11-09", "versuche": [], "status": "neu", "faellig": null},
-  {"name": "sicher richtig, nichts fällig", "frage": "1.Q01", "heute": "2026-11-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Apfel"]}], "status": "sicher", "faellig": null},
-  {"name": "falsch, nach zwei Tagen", "frage": "1.Q01", "heute": "2026-11-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]}], "status": "wartet", "faellig": "2026-11-10"},
-  {"name": "falsch, am Fälligkeitstag", "frage": "1.Q01", "heute": "2026-11-10",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]}], "status": "faellig", "faellig": "2026-11-10"},
-  {"name": "unsicher, nach drei Tagen", "frage": "1.Q01", "heute": "2026-11-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Apfel"], "unsicher": true}], "status": "wartet", "faellig": "2026-11-11"},
-  {"name": "Leiter Stufe 1", "frage": "1.Q01", "heute": "2026-11-12",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]}, {"zeit": "2026-11-10T10:00:00Z", "wahl": ["Apfel"]}], "status": "wartet", "faellig": "2026-11-17"},
-  {"name": "Leiter Stufe 2", "frage": "1.Q01", "heute": "2026-11-20",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]}, {"zeit": "2026-11-10T10:00:00Z", "wahl": ["Apfel"]}, {"zeit": "2026-11-17T10:00:00Z", "wahl": ["Apfel"]}], "status": "wartet", "faellig": "2026-12-08"},
-  {"name": "Leiter durchlaufen", "frage": "1.Q01", "heute": "2026-12-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]}, {"zeit": "2026-11-10T10:00:00Z", "wahl": ["Apfel"]}, {"zeit": "2026-11-17T10:00:00Z", "wahl": ["Apfel"]}, {"zeit": "2026-12-08T10:00:00Z", "wahl": ["Apfel"]}], "status": "sicher", "faellig": null},
-  {"name": "falsch auf der Leiter setzt zurück", "frage": "1.Q01", "heute": "2026-11-18",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]}, {"zeit": "2026-11-10T10:00:00Z", "wahl": ["Apfel"]}, {"zeit": "2026-11-17T10:00:00Z", "wahl": ["Banane"]}], "status": "wartet", "faellig": "2026-11-19"},
-  {"name": "Tag nach Berliner Zeit", "frage": "1.Q01", "heute": "2026-11-10",
-   "versuche": [{"zeit": "2026-11-08T23:30:00Z", "wahl": ["Banane"]}], "status": "wartet", "faellig": "2026-11-11"},
-  {"name": "kurz vor der Klausur höchstens zwei Tage davor, aber nach dem Versuch", "frage": "1.Q01", "heute": "2027-02-11",
-   "versuche": [{"zeit": "2027-02-11T10:00:00Z", "wahl": ["Banane"]}], "status": "wartet", "faellig": "2027-02-12"},
-  {"name": "Stufe 2 vor der Klausur gekappt", "frage": "1.Q01", "heute": "2027-02-01",
-   "versuche": [{"zeit": "2027-01-20T10:00:00Z", "wahl": ["Banane"]}, {"zeit": "2027-01-22T10:00:00Z", "wahl": ["Apfel"]}, {"zeit": "2027-01-30T10:00:00Z", "wahl": ["Apfel"]}], "status": "wartet", "faellig": "2027-02-10"},
-  {"name": "gelöschter Versuch zählt nicht", "frage": "1.Q01", "heute": "2026-11-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"], "geloescht": "2026-11-08T10:01:00Z"}], "status": "neu", "faellig": null},
-  {"name": "offene Frage falsch", "frage": "1.Q03", "heute": "2026-11-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": [], "falsch": true}], "status": "wartet", "faellig": "2026-11-10"},
-  {"name": "offene Frage gewusst", "frage": "1.Q03", "heute": "2026-11-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": []}], "status": "sicher", "faellig": null},
-  {"name": "Mehrfachauswahl unvollständig ist falsch", "frage": "2.Q01", "heute": "2026-11-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Erbse"]}], "status": "wartet", "faellig": "2026-11-10"},
-  {"name": "Mehrfachauswahl vollständig, Reihenfolge egal", "frage": "2.Q01", "heute": "2026-11-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Gurke", "Erbse"]}], "status": "sicher", "faellig": null},
-  {"name": "Docs-Escapes in der Wahl", "frage": "1.Q01", "heute": "2026-11-09",
-   "versuche": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Birne 3\\. Klasse \\= gut"]}], "status": "wartet", "faellig": "2026-11-10"},
-  {"name": "Versuche ungeordnet, es zählt die Zeit", "frage": "1.Q01", "heute": "2026-11-12",
-   "versuche": [{"zeit": "2026-11-10T10:00:00Z", "wahl": ["Apfel"]}, {"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]}], "status": "wartet", "faellig": "2026-11-17"}
+ {
+  "name": "ohne Versuch neu",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "versuche": [],
+  "status": "neu",
+  "faellig": null
+ },
+ {
+  "name": "sicher richtig, nichts fällig",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "sicher",
+  "faellig": null
+ },
+ {
+  "name": "falsch, nach zwei Tagen",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-10"
+ },
+ {
+  "name": "falsch, am Fälligkeitstag",
+  "frage": "1.Q01",
+  "heute": "2026-11-10",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "status": "faellig",
+  "faellig": "2026-11-10"
+ },
+ {
+  "name": "unsicher, nach drei Tagen",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ],
+    "unsicher": true
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-11"
+ },
+ {
+  "name": "Leiter Stufe 1",
+  "frage": "1.Q01",
+  "heute": "2026-11-12",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-17"
+ },
+ {
+  "name": "Leiter Stufe 2",
+  "frage": "1.Q01",
+  "heute": "2026-11-20",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-17T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-12-08"
+ },
+ {
+  "name": "Leiter durchlaufen",
+  "frage": "1.Q01",
+  "heute": "2026-12-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-17T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-12-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "sicher",
+  "faellig": null
+ },
+ {
+  "name": "falsch auf der Leiter setzt zurück",
+  "frage": "1.Q01",
+  "heute": "2026-11-18",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-17T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-19"
+ },
+ {
+  "name": "Tag nach Berliner Zeit",
+  "frage": "1.Q01",
+  "heute": "2026-11-10",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T23:30:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-11"
+ },
+ {
+  "name": "kurz vor der Klausur höchstens zwei Tage davor, aber nach dem Versuch",
+  "frage": "1.Q01",
+  "heute": "2027-02-11",
+  "versuche": [
+   {
+    "zeit": "2027-02-11T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2027-02-12"
+ },
+ {
+  "name": "Stufe 2 vor der Klausur gekappt",
+  "frage": "1.Q01",
+  "heute": "2027-02-01",
+  "versuche": [
+   {
+    "zeit": "2027-01-20T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2027-01-22T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2027-01-30T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2027-02-10"
+ },
+ {
+  "name": "gelöschter Versuch zählt nicht",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ],
+    "geloescht": "2026-11-08T10:01:00Z"
+   }
+  ],
+  "status": "neu",
+  "faellig": null
+ },
+ {
+  "name": "offene Frage falsch",
+  "frage": "1.Q03",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [],
+    "falsch": true
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-10"
+ },
+ {
+  "name": "offene Frage gewusst",
+  "frage": "1.Q03",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": []
+   }
+  ],
+  "status": "sicher",
+  "faellig": null
+ },
+ {
+  "name": "Mehrfachauswahl unvollständig ist falsch",
+  "frage": "2.Q01",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Erbse"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-10"
+ },
+ {
+  "name": "Mehrfachauswahl vollständig, Reihenfolge egal",
+  "frage": "2.Q01",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Gurke",
+     "Erbse"
+    ]
+   }
+  ],
+  "status": "sicher",
+  "faellig": null
+ },
+ {
+  "name": "Docs-Escapes in der Wahl",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Birne 3\\. Klasse \\= gut"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-10"
+ },
+ {
+  "name": "Versuche ungeordnet, es zählt die Zeit",
+  "frage": "1.Q01",
+  "heute": "2026-11-12",
+  "versuche": [
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-17"
+ },
+ {
+  "name": "sofort richtig wiederholt rückt die Leiter nicht vor",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-08T10:05:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-10"
+ },
+ {
+  "name": "richtig vor der Fälligkeit zählt nicht, am Fälligkeitstag schon",
+  "frage": "1.Q01",
+  "heute": "2026-11-11",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-09T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-17"
+ }
 ]

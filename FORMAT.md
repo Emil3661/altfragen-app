@@ -98,10 +98,11 @@ Alle im Ordner `Altfragen-App`, angelegt vom Werkzeug `veroeffentlichen.py` übe
 - `wahl` enthält **Optionstexte**, nie Positionen. Verglichen wird über `normal()`
 - `falsch` nur bei offenen Fragen (Selbsteinschätzung). `unsicher` bei allen
 - `geloescht` = Zeitpunkt des Zurücknehmens. Gelöschte Versuche bleiben als Grabstein stehen, damit das Zusammenführen sie nicht zurückholt
-- Versuche aus Docs: `id` = `docs:<frageId>:<Schlüssel>:<modifiedTime der .md>`, damit zwei Geräte denselben Haken nicht doppelt anlegen
+- Versuche aus Docs: `id` = `docs:<frageId>:<Schlüssel>:<Zahl der nicht gelöschten Versuche davor>`, damit zwei Geräte denselben Haken nicht doppelt anlegen, auch wenn sie die .md zu verschiedenen Zeiten lesen
+- Unbrauchbare Versuche (ohne `id`, ohne lesbare `zeit`, `wahl` keine Liste) werden beim Laden verworfen
 
 ### Zusammenführen zweier Stände
-- `versuche`: Vereinigung über `id`. Gleiche `id` → der mit späterem `geaendert`
+- `versuche`: Vereinigung über `id`. Gleiche `id` → der mit späterem `geaendert`. Trägt eine der beiden Fassungen `geloescht`, bleibt der Versuch gelöscht
 - `schritte`: je Feld der mit späterer `zeit`
 - `md`: der ganze Block mit späterer `zeit`
 
@@ -143,8 +144,10 @@ Aus den nicht gelöschten Versuchen einer Frage, nach `zeit` aufsteigend. Tage =
 | unsicher | Leiter an, Stufe 0, fällig nach **3** Tagen |
 | richtig, Leiter aus | nichts fällig |
 | richtig, Leiter an | Stufe +1: Stufe 1 → **7** Tage, Stufe 2 → **21** Tage, Stufe 3 → Leiter aus |
+| richtig, Leiter an, vor dem Fälligkeitstag | nichts ändert sich, sofortiges Üben rückt die Leiter nicht vor |
 
 - Fälligkeit höchstens zwei Tage vor der Klausur, mindestens einen Tag nach dem Versuch
+- Eine Frage gilt als beantwortet, sobald sie einen Versuch mit Ergebnis hat (für Plan, Tempo, „Weiter mit Frage“)
 - **Status**: `neu` (kein Versuch) · `sicher` (nichts fällig) · `faellig` (Fälligkeit ≤ heute) · `wartet`
 
 ## Abgleich App ↔ Lernskript
@@ -161,8 +164,13 @@ Für jede beantwortbare Frage, mit `basis` und `ueberschrieben` aus `md`:
 5. Weicht `m` vom Soll ab → Kästchen der Frage in der .md umschreiben, nur das Zeichen in `[ ]`. `schluessel(m)` vorn in `ueberschrieben`, ohne Doppelte, höchstens 3
 6. `basis` = `schluessel(Soll)`, LEER wird nicht gespeichert
 7. Fragen mit Fehler beim Lesen (unbekannte Option) bleiben unberührt: kein Import, kein Umschreiben, `basis` bleibt
+8. Ebenso Fragen mit Optionen, bei denen in der .md nur `unsicher` oder `falsch` angehakt ist, aber keine Option: Docs ist mitten in einer Antwort
+9. Neuer md-Text nur, wenn er sich vom gelesenen unterscheidet
 
 **Schutz**
-- `basis` und `ueberschrieben` werden erst gespeichert, wenn die .md erfolgreich hochgeladen ist
-- Abgeglichen wird nur ein Stand, der vorher mit dem Fortschritt auf Drive zusammengeführt wurde. Ist der nicht lesbar, unterbleibt der Abgleich
-- Würde ein Abgleich bei mehr als 5 Fragen alle Haken entfernen, bricht er ab und meldet es. Die .md bleibt dann unverändert
+- Reihenfolge je Fach: Fortschritt holen und zusammenführen → Fortschritt hochladen → .md lesen und abgleichen → `modifiedTime` der .md erneut prüfen, bei Abweichung von vorn (höchstens dreimal) → .md hochladen → Fortschritt mit neuem md-Block hochladen
+- `basis` und `ueberschrieben` gelten erst, wenn die .md erfolgreich hochgeladen ist
+- Abgeglichen wird nur ein Stand, der vorher mit dem Fortschritt auf Drive zusammengeführt wurde. Ist der nicht lesbar oder leer, unterbleibt der Abgleich
+- Würde ein Abgleich bei mehr als 5 Fragen alle Haken entfernen, für die es in der App keinen Versuch gibt (auch keinen zurückgenommenen), bricht er ab und nennt sie. Die .md bleibt dann unverändert
+
+**Bekannte Grenze:** Ob ein Stand aus Docs eine alte Fassung ist, erkennt der Abgleich nur an Ständen, die die App selbst überschrieben hat. Wählt man in Docs bewusst genau die Antwort wieder, die eine Wiederholung in der App ersetzt hat, setzt die App ihre zurück. Speichert eine veraltete Docs-Sitzung einen früheren Docs-Stand, wird er als neuer Versuch übernommen

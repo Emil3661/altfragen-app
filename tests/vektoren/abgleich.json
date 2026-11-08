@@ -658,5 +658,94 @@
     ]
    }
   }
+ },
+ {
+  "name": "Haken nur bei unsicher, ohne Option, bleibt unberührt",
+  "ersetze": [
+   [
+    "- [ ] *unsicher*",
+    "- [x] *unsicher*"
+   ]
+  ],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "d1",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": true,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "a3",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "a4",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "md": {
+    "zeit": "2026-11-08T21:16:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ],
+    "1.Q02": [],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [],
+   "zeilen": {
+    "- [x] *unsicher*": 2
+   },
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {}
+  }
  }
 ]

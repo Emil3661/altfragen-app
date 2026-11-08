@@ -38,14 +38,28 @@
         t.onerror = () => fehler(t.error);
       });
     }
-    return { holen, setzen };
+    // Lesen und Schreiben in einer Transaktion: mischen(alt) liefert den neuen Wert.
+    // So kann ein zweiter Tab der App zwischen Lesen und Schreiben nichts überschreiben.
+    async function aendern(k, mischen) {
+      const d = await oeffnen();
+      return new Promise((fertig, fehler) => {
+        const t = d.transaction('kv', 'readwrite');
+        const s = t.objectStore('kv');
+        let neu;
+        const r = s.get(k);
+        r.onsuccess = () => { neu = mischen(r.result === undefined ? null : r.result); s.put(neu, k); };
+        t.oncomplete = () => fertig(neu);
+        t.onerror = () => fehler(t.error);
+      });
+    }
+    return { holen, setzen, aendern };
   })();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
   // ---------- Zustand ----------
   let konfig = null;
   const faecher = {};
-  const sync = { laeuft: false, nochmal: false, zeit: null, fehler: '', hinweis: '', lesefehler: {}, offen: false };
+  const sync = { laeuft: false, nochmal: false, zeit: null, fehler: '', hinweis: '', kurz: '', lesefehler: {}, offen: false };
   let einstellungen = { rundeGroesse: 20 };
   let aktivFach = null;
   let runde = null;
@@ -90,20 +104,40 @@
 
   // ---------- Navigation mit Zurück-Taste ----------
   // Jeder Bildschirm ist ein Eintrag im Browserverlauf; die Zurück-Geste des Handys führt so zum vorigen.
+  // Der Stapel spiegelt den Browserverlauf: Eintrag n im Verlauf = Tiefe n im Stapel (state.n).
   const stapel = [];
+  let nachZurueck = null;
   // bleiben = derselbe Bildschirm wird nur aktualisiert, die Scrollposition bleibt
   function zeige(name, param = {}, ersetzen = false, bleiben = false) {
     if (ersetzen && stapel.length) stapel[stapel.length - 1] = { name, param };
     else { stapel.push({ name, param }); history.pushState({ n: stapel.length }, ''); }
+    probeSichern();
     zeichnen(bleiben);
   }
   function zurueck() {
     if (stapel.length > 1) history.back();
     else zeige('start', {}, true);
   }
-  window.addEventListener('popstate', () => {
-    if (stapel.length > 1) stapel.pop();
-    zeichnen();
+  // Auf Tiefe `tiefe` zurück (1 = Start), den Browserverlauf mitnehmen, danach optional `danach` ausführen
+  function zurueckAuf(tiefe, danach = null) {
+    const n = stapel.length - tiefe;
+    if (n <= 0) { if (danach) danach(); else zeichnen(); return; }
+    nachZurueck = danach;
+    history.go(-n);
+  }
+  window.addEventListener('popstate', e => {
+    // Eine laufende Probeklausur verschwindet nicht durch die Zurück-Geste
+    const oben = stapel[stapel.length - 1];
+    if (runde && runde.probe && !runde.probe.abgegeben && oben && oben.name === 'frage') {
+      history.pushState({ n: stapel.length }, '');
+      kurzHinweis('Probeklausur läuft. Abbrechen: oben links ‹ zweimal tippen');
+      return;
+    }
+    const n = (e.state && e.state.n) || 1;
+    if (n < stapel.length) stapel.length = Math.max(1, n);
+    const danach = nachZurueck;
+    nachZurueck = null;
+    if (danach) danach(); else zeichnen();
   });
   function zeichnen(bleiben = false) {
     const s = stapel[stapel.length - 1] || { name: 'start', param: {} };
@@ -131,8 +165,19 @@
     aktivFach = localStorage.getItem('altfragen_fach');
     if (!faecher[aktivFach]) aktivFach = Object.keys(faecher)[0] || null;
   }
+  // Speichern mischt mit dem, was ein anderer Tab der App inzwischen gespeichert hat.
+  // Danach noch einmal mit dem Speicher vereinigen, damit Antworten aus der Wartezeit bleiben.
   async function lokalSpeichern(id) {
-    await Ablage.setzen('fortschritt:' + id, faecher[id].fortschritt);
+    const fa = faecher[id];
+    const gemischt = await Ablage.aendern('fortschritt:' + id, alt => K.zusammenfuehren(fa.fortschritt, alt || {}));
+    fa.fortschritt = K.zusammenfuehren(gemischt, fa.fortschritt);
+  }
+  // Stand anderer Tabs übernehmen, etwa wenn die App wieder in den Vordergrund kommt
+  async function lokalEinmischen() {
+    for (const [id, fa] of Object.entries(faecher)) {
+      const alt = await Ablage.holen('fortschritt:' + id);
+      if (alt) fa.fortschritt = K.zusammenfuehren(fa.fortschritt, alt);
+    }
   }
 
   // ---------- Abgleich mit Drive ----------
@@ -166,50 +211,68 @@
     } finally {
       sync.laeuft = false;
       const s = stapel[stapel.length - 1];
-      // Mitten in einer Frage nicht neu zeichnen, sonst springt der Bildschirm
-      if (neueDaten && (!s || !['frage', 'runde-ende'].includes(s.name))) zeichnen();
+      // Nur Übersichten neu zeichnen, an der Stelle, an der man steht; in Thema und Frage nur die Statuszeile
+      if (neueDaten && (!s || ['start', 'themen'].includes(s.name))) zeichnen(true);
       else statusZeichnen();
       if (sync.nochmal) { sync.nochmal = false; setTimeout(abgleich, 300); }
     }
   }
 
+  // Reihenfolge wie in FORMAT.md, Abschnitt Schutz: erst der Fortschritt, dann die .md, dann wieder der Fortschritt.
   async function fachAbgleichen(fk) {
     let neu = false;
     let fa = faecher[fk.id];
     const meta = await D.metadaten(fk.fragen);
     if (!fa || fa.fragenZeit !== meta.modifiedTime) {
       const daten = JSON.parse(await D.lesen(fk.fragen));
-      const f = fa ? fa.fortschritt : ((await Ablage.holen('fortschritt:' + fk.id)) || K.leererFortschritt(fk.id));
-      fa = faecher[fk.id] = { daten, ix: K.erschliessen(daten), fortschritt: K.vervollstaendigen(f, fk.id), fragenZeit: meta.modifiedTime };
+      if (!fa) {
+        const f = (await Ablage.holen('fortschritt:' + fk.id)) || K.leererFortschritt(fk.id);
+        fa = faecher[fk.id] = { fortschritt: K.vervollstaendigen(f, fk.id) };
+      }
+      // Dasselbe Objekt behalten, damit offene Bildschirme weiter auf den aktuellen Stand zeigen
+      Object.assign(fa, { daten, ix: K.erschliessen(daten), fragenZeit: meta.modifiedTime });
       await Ablage.setzen('fragen:' + fk.id, { daten, zeit: meta.modifiedTime });
       neu = true;
     }
-    // Ohne lesbaren Fortschritt auf Drive kein Abgleich mit dem Lernskript (Schutzregel)
+    // 1. Fortschritt von Drive. Leer oder unlesbar: anhalten, sonst könnte ein alter Stand gewinnen
     const fernText = await D.lesen(fk.fortschritt);
-    const fern = fernText.trim() ? JSON.parse(fernText) : K.leererFortschritt(fk.id);
+    if (!fernText.trim()) throw new Error('Fortschritt auf Drive ist leer, Abgleich ausgesetzt');
+    const fern = JSON.parse(fernText);
     const vorher = JSON.stringify(fa.fortschritt.versuche);
-    let f = K.zusammenfuehren(fa.fortschritt, fern);
+    // 2. Zusammenführen und hochladen, bevor die .md angefasst wird
+    await hochladen(fk, K.zusammenfuehren(fa.fortschritt, fern));
+    // 3. Lernskript abgleichen. Hat Docs zwischen Lesen und Schreiben gespeichert, von vorn (höchstens dreimal)
     if (fk.lernskript) {
-      const mm = await D.metadaten(fk.lernskript);
-      const text = await D.lesen(fk.lernskript);
-      const r = K.abgleichen(f, text, mm.modifiedTime, fa.ix, jetzt());
-      sync.lesefehler[fk.id] = r.fehler;
-      if (r.abbruch) sync.hinweis = `${fk.name}: ${r.abbruch}`;
-      f = r.fortschritt;
-      if (r.mdNeu !== null) {
-        try {
-          await D.schreiben(fk.lernskript, r.mdNeu, 'text/markdown');
-        } catch (e) {
-          f.md = r.mdAlt;
-          sync.fehler = `${fk.name}: Lernskript nicht geschrieben (${e.message})`;
+      for (let versuch = 0; versuch < 3; versuch++) {
+        const mm = await D.metadaten(fk.lernskript);
+        const text = await D.lesen(fk.lernskript);
+        const r = K.abgleichen(fa.fortschritt, text, mm.modifiedTime, fa.ix, jetzt());
+        sync.lesefehler[fk.id] = r.fehler;
+        if (r.abbruch) sync.hinweis = `${fk.name}: ${r.abbruch}`;
+        const f = r.fortschritt;
+        if (r.mdNeu !== null) {
+          const kurz = await D.metadaten(fk.lernskript);
+          if (kurz.modifiedTime !== mm.modifiedTime) continue;
+          try {
+            await D.schreiben(fk.lernskript, r.mdNeu, 'text/markdown');
+          } catch (e) {
+            f.md = r.mdAlt;
+            sync.fehler = `${fk.name}: Lernskript nicht geschrieben (${e.message})`;
+          }
         }
+        await hochladen(fk, f);
+        break;
       }
     }
-    f = K.zusammenfuehren(f, fa.fortschritt);
+    return neu || JSON.stringify(fa.fortschritt.versuche) !== vorher;
+  }
+  // Fortschritt hochladen und in den Speicher übernehmen. Die Vereinigung mit dem aktuellen Speicher läuft
+  // ohne Unterbrechung, deshalb bleiben Antworten erhalten, die während des Hochladens dazukamen.
+  async function hochladen(fk, f) {
     await D.schreiben(fk.fortschritt, JSON.stringify(f), 'application/json');
-    fa.fortschritt = f;
+    const fa = faecher[fk.id];
+    fa.fortschritt = K.zusammenfuehren(f, fa.fortschritt);
     await lokalSpeichern(fk.id);
-    return neu || JSON.stringify(f.versuche) !== vorher;
   }
 
   // Nach einer Antwort nicht sofort, sondern gebündelt abgleichen; beim Verlassen der App sofort.
@@ -219,10 +282,17 @@
     clearTimeout(abgleichUhr);
     abgleichUhr = setTimeout(abgleich, 20000);
   }
-  document.addEventListener('visibilitychange', () => {
+  document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'hidden' && sync.offen && D.gueltig()) { clearTimeout(abgleichUhr); abgleich(); }
-    if (document.visibilityState === 'visible' && D.gueltig() && !sync.laeuft) abgleich();
+    if (document.visibilityState === 'visible') {
+      await lokalEinmischen();
+      const s = stapel[stapel.length - 1];
+      if (s && ['start', 'themen'].includes(s.name)) zeichnen(true);
+      if (D.gueltig() && !sync.laeuft) abgleich();
+    }
   });
+  // Kommt die Anmeldung erst nach einer Fehlmeldung des Google-Fensters an, trotzdem abgleichen
+  D.beiAnmeldung(() => { statusZeichnen(); abgleich(); });
 
   async function verbinden() {
     try {
@@ -244,7 +314,16 @@
     else if (sync.offen) z.append('Antworten werden gleich abgeglichen');
     else if (sync.zeit) z.append(`Abgeglichen ${uhrzeit(sync.zeit)}`);
     if (sync.hinweis) z.append(el('div', { class: 'rot', text: sync.hinweis }));
+    if (sync.kurz) z.append(el('div', { class: 'rot', text: sync.kurz }));
     return z;
+  }
+  // Kurzer Hinweis für drei Sekunden in der Statuszeile, getrennt von Meldungen des Abgleichs
+  let kurzUhr = null;
+  function kurzHinweis(text) {
+    sync.kurz = text;
+    statusZeichnen();
+    clearTimeout(kurzUhr);
+    kurzUhr = setTimeout(() => { sync.kurz = ''; statusZeichnen(); }, 3000);
   }
   function statusZeichnen() {
     const alt = document.getElementById('status');
@@ -372,7 +451,8 @@
     if (!t) return bildStart();
     const f = fa.fortschritt;
     const st = K.themaStand(t, f, heute(), fa.daten.klausur);
-    const setze = (feld, wert) => { K.schrittSetzen(f, rang, feld, wert, jetzt()); lokalSpeichern(fa.daten.fach); abgleichPlanen(); zeige('thema', { rang }, true, true); };
+    // Den Fortschritt erst beim Tippen holen: Ein Abgleich im Hintergrund kann ihn inzwischen ersetzt haben
+    const setze = (feld, wert) => { K.schrittSetzen(fach().fortschritt, rang, feld, wert, jetzt()); lokalSpeichern(aktivFach); abgleichPlanen(); zeige('thema', { rang }, true, true); };
     const teile = [kopf(`${t.rang} · ${t.titel}`)];
     teile.push(el('p', { class: 'unter', text: [t.stufe ? `Stufe ${t.stufe}` : null, t.meta].filter(Boolean).join(' · ') }));
     teile.push(schritteZeile(st));
@@ -421,7 +501,7 @@
     let liste = qs;
     let pos = 0;
     if (wie === 'weiter') {
-      const i = qs.findIndex(q => q.typ !== 'fragment' && !K.gueltige(fa.fortschritt.versuche[q.id]).length);
+      const i = qs.findIndex(q => q.typ !== 'fragment' && K.wiederholung(q, fa.fortschritt.versuche[q.id], heute(), fa.daten.klausur).status === 'neu');
       pos = Math.max(0, i);
     }
     if (wie === 'schwach') {
@@ -432,14 +512,33 @@
 
   function rundeStarten(art, liste, pos = 0, rang = null, probe = null) {
     if (!liste.length) return;
-    runde = { art, liste, pos, rang, versuch: {}, wahl: {}, auswahl: {}, aufgedeckt: {}, mischen: art !== 'thema', probe, start: jetzt() };
+    runde = { art, liste, pos, rang, versuch: {}, auswahl: {}, aufgedeckt: {}, samen: {}, mischen: art !== 'thema', probe, start: jetzt() };
     zeige('frage');
   }
 
+  // Startwert fürs Mischen je Frage einmal pro Runde festlegen, damit sich die Reihenfolge nach dem Antworten nicht ändert
   function optionenFuer(q) {
     if (!runde.mischen) return q.optionen;
-    const n = K.gueltige(fach().fortschritt.versuche[q.id]).length;
-    return K.mischen(q.optionen, `${q.id}:${runde.probe ? runde.probe.name : n}`);
+    if (!(q.id in runde.samen)) runde.samen[q.id] = runde.probe ? runde.probe.name : String(K.gueltige(fach().fortschritt.versuche[q.id]).length);
+    return K.mischen(q.optionen, `${q.id}:${runde.samen[q.id]}`);
+  }
+
+  // Laufende Probeklausur sichern, damit sie übersteht, wenn Android die App im Hintergrund beendet
+  const PROBE_MERKER = 'altfragen_probe';
+  function probeSichern() {
+    try {
+      if (runde && runde.probe && !runde.probe.abgegeben) localStorage.setItem(PROBE_MERKER, JSON.stringify({ fach: aktivFach, runde }));
+      else localStorage.removeItem(PROBE_MERKER);
+    } catch (e) { /* ohne Speicher geht die Probe beim Beenden verloren */ }
+  }
+  function probeWiederherstellen() {
+    try {
+      const g = JSON.parse(localStorage.getItem(PROBE_MERKER) || 'null');
+      if (!g || !faecher[g.fach]) return false;
+      aktivFach = g.fach;
+      runde = g.runde;
+      return true;
+    } catch (e) { return false; }
   }
 
   function bildFrage() {
@@ -474,7 +573,8 @@
 
     const opts = optionenFuer(q);
     const mehrere = q.optionen.filter(o => o.richtig).length > 1;
-    const geloest = !!v && (!probe || runde.probe.abgegeben);
+    // Nach dem Abgeben einer Probeklausur Lösung auch bei übersprungenen Fragen zeigen
+    const geloest = probe ? runde.probe.abgegeben : !!v;
     const auswahl = runde.auswahl[id] || (runde.auswahl[id] = []);
     if (mehrere && !geloest) teile.push(el('p', { class: 'unter', text: 'Mehrere Antworten richtig' }));
     const liste = el('div', { class: 'wahl' });
@@ -494,6 +594,7 @@
     }
     if (geloest) teile.push(...loesung(q, v, opts));
     teile.push(weiterLeiste(geloest || probe));
+    teile.push(statusZeile());
     return teile;
   }
 
@@ -546,9 +647,9 @@
 
   // Lösung wie im Lernskript: jede Option mit ✓ trifft zu / ✗ trifft nicht zu, fett = anzukreuzen, Begründung dahinter.
   function loesung(q, v, opts) {
-    const fa = fach();
-    const e = K.ergebnis(q, v);
-    const teile = [el('p', { class: 'urteil ' + (e === 'falsch' ? 'schlecht' : 'gut'), text: e === 'falsch' ? 'Falsch' : (e === 'unsicher' ? 'Richtig, unsicher' : 'Richtig') })];
+    const e = v ? K.ergebnis(q, v) : null;
+    const urteil = !e ? 'Nicht beantwortet' : e === 'falsch' ? 'Falsch' : (e === 'unsicher' ? 'Richtig, unsicher' : 'Richtig');
+    const teile = [el('p', { class: 'urteil ' + (e === 'richtig' || e === 'unsicher' ? 'gut' : 'schlecht'), text: urteil })];
     const neg = q.typ === 'negativ';
     const zeilen = el('ul', { class: 'loesung-liste' });
     for (const o of opts) {
@@ -558,10 +659,13 @@
         el('span', {}, o.richtig ? el('strong', {}, mdZeile(o.t)) : mdZeile(o.t), o.w ? el('span', { class: 'unter' }, ' — ', mdZeile(o.w)) : null, o.erg ? el('em', { class: 'unter', text: ' (ergänzt)' }) : null)));
     }
     teile.push(zeilen);
-    if (e !== 'falsch') {
+    if (e === 'richtig' || e === 'unsicher') {
+      // Versuch und Fortschritt erst beim Tippen holen, ein Abgleich kann beides inzwischen erneuert haben
       teile.push(el('button', { class: 'knopf haken' + (v.unsicher ? ' an' : ''), onclick: () => {
-        K.versuchAendern(fa.fortschritt, q.id, v.id, { unsicher: !v.unsicher }, jetzt());
-        lokalSpeichern(fa.daten.fach); abgleichPlanen(); zeige('frage', {}, true, true);
+        const f = fach().fortschritt;
+        const aktuell = (f.versuche[q.id] || []).find(x => x.id === v.id);
+        if (aktuell) K.versuchAendern(f, q.id, v.id, { unsicher: !aktuell.unsicher }, jetzt());
+        lokalSpeichern(aktivFach); abgleichPlanen(); zeige('frage', {}, true, true);
       }, text: (v.unsicher ? '☑' : '☐') + ' unsicher (richtig, aber geraten)' }));
     }
     teile.push(...zusatz(q));
@@ -577,16 +681,15 @@
   }
 
   function weiterLeiste(weiterFrei) {
-    const fa = fach();
     const id = runde.liste[runde.pos];
     const vid = runde.versuch[id];
     const leiste = el('div', { class: 'leiste unten' });
     leiste.append(knopf('‹ Zurück', () => { if (runde.pos > 0) { runde.pos -= 1; zeige('frage', {}, true); } }, 'leise' + (runde.pos > 0 ? '' : ' aus')));
     if (vid && (!runde.probe || runde.probe.abgegeben) && runde.art !== 'probe') {
       leiste.append(knopf('Antwort zurücknehmen', () => {
-        K.versuchZuruecknehmen(fa.fortschritt, id, vid, jetzt());
+        K.versuchZuruecknehmen(fach().fortschritt, id, vid, jetzt());
         delete runde.versuch[id]; runde.auswahl[id] = []; delete runde.aufgedeckt[id];
-        lokalSpeichern(fa.daten.fach); abgleichPlanen(); zeige('frage', {}, true, true);
+        lokalSpeichern(aktivFach); abgleichPlanen(); zeige('frage', {}, true, true);
       }, 'leise'));
     }
     const letzte = runde.pos >= runde.liste.length - 1;
@@ -601,20 +704,24 @@
     return leiste;
   }
 
+  // Runde verlassen: Thema und Wiederholung zur Zusammenfassung. Eine laufende Probeklausur wird nach
+  // Rückfrage ohne Wertung abgebrochen, zurück zur Auswahl.
   function rundeVerlassen() {
     if (runde && runde.probe && !runde.probe.abgegeben) {
-      if (!confirmLeise('Probeklausur abbrechen? Bisherige Antworten werden nicht gewertet.')) return;
+      if (!bestaetigen('Probeklausur abbrechen? Die Antworten werden nicht gewertet. Zum Bestätigen noch einmal tippen.')) return;
+      runde = null;
+      probeSichern();
+      zurueckAuf(stapel.length - 1);
+      return;
     }
     zeige('runde-ende', {}, true);
   }
   // Rückfrage ohne Browserdialog: zweimal tippen innerhalb von drei Sekunden
   let bestaetigt = 0;
-  function confirmLeise(text) {
+  function bestaetigen(text) {
     if (Date.now() - bestaetigt < 3000) return true;
     bestaetigt = Date.now();
-    sync.hinweis = text + ' Zum Bestätigen noch einmal tippen.';
-    statusZeichnen();
-    setTimeout(() => { sync.hinweis = ''; statusZeichnen(); }, 3000);
+    kurzHinweis(text);
     return false;
   }
 
@@ -635,10 +742,17 @@
     }
     teile.push(el('p', { text: `${n} beantwortet · ${zahl.richtig} sicher richtig · ${zahl.unsicher} unsicher · ${zahl.falsch} falsch` }));
     if (zahl.falsch + zahl.unsicher) teile.push(el('p', { class: 'unter', text: 'Falsche kommen nach zwei Tagen wieder, unsichere nach drei.' }));
-    if (runde.probe) teile.push(knopf('Lösungen ansehen', () => { runde.probe.abgegeben = true; runde.pos = 0; zeige('frage', {}, true); }));
+    if (runde.probe) teile.push(knopf('Lösungen ansehen', () => { runde.pos = 0; zeige('frage', {}, true); }));
     const rang = runde.rang;
-    if (rang) teile.push(knopf('Zum Thema', () => { runde = null; stapel.length = 1; zeige('thema', { rang }); }, 'haupt'));
-    teile.push(knopf('Zur Startseite', () => { runde = null; stapel.length = 0; zeige('start'); }, rang ? '' : 'haupt'));
+    // Zurück über den Browserverlauf, damit die Zurück-Geste danach nicht ins Leere läuft
+    if (rang) {
+      teile.push(knopf('Zum Thema', () => {
+        runde = null;
+        const i = stapel.findIndex(s => s.name === 'thema' && s.param.rang === rang);
+        if (i >= 0) zurueckAuf(i + 1); else zurueckAuf(1, () => zeige('thema', { rang }));
+      }, 'haupt'));
+    }
+    teile.push(knopf('Zur Startseite', () => { runde = null; zurueckAuf(1); }, rang ? '' : 'haupt'));
     teile.push(statusZeile());
     return teile;
   }
@@ -666,7 +780,8 @@
       if (runde.probe.abgegeben) { u.textContent = 'Lösungen'; return; }
       const rest = Math.max(0, runde.probe.ende - Date.now());
       u.textContent = `${Math.floor(rest / 60000)}:${String(Math.floor(rest / 1000) % 60).padStart(2, '0')} übrig`;
-      if (rest === 0) u.classList.add('rot');
+      // Zeit um: abgeben wie in der echten Klausur
+      if (rest === 0) setTimeout(probeAbgeben, 0);
     };
     stellen();
     clearInterval(probeUhr.takt);
@@ -675,6 +790,7 @@
   }
   // Abgeben: jede angehakte Antwort wird ein Versuch (Quelle probe), dann die Auswertung.
   function probeAbgeben() {
+    if (!runde || !runde.probe || runde.probe.abgegeben) return;
     const fa = fach();
     for (const id of runde.liste) {
       const e = fa.ix.fragen.get(id);
@@ -730,7 +846,9 @@
   laden().then(() => {
     stapel.push({ name: 'start', param: {} });
     history.replaceState({ n: 1 }, '');
-    zeichnen();
+    // Eine unterbrochene Probeklausur geht dort weiter, wo sie war; die Uhr läuft dabei weiter
+    if (probeWiederherstellen()) zeige('frage');
+    else zeichnen();
     // Google im Hintergrund laden; ist der Schlüssel dieses Tabs noch gültig, sofort abgleichen
     D.vorbereiten(KONFIG.clientId, BEREICH).then(() => { if (D.gueltig()) abgleich(); else statusZeichnen(); }).catch(() => statusZeichnen());
   });

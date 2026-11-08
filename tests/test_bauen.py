@@ -34,7 +34,7 @@ PROBE = '\n'.join([
 class Lernskript(unittest.TestCase):
 
     def test_vektor_passt(self):
-        self.assertEqual(bauen.lernskript_pruefen(DATEN, MD), ([], []))
+        self.assertEqual(bauen.lernskript_pruefen(DATEN, MD), [])
 
     def test_abweichungen_werden_gefunden(self):
         faelle = {
@@ -47,17 +47,13 @@ class Lernskript(unittest.TestCase):
         }
         for name, md in faelle.items():
             with self.subTest(name):
-                abw, _ = bauen.lernskript_pruefen(DATEN, md)
-                self.assertTrue(abw)
+                self.assertTrue(bauen.lernskript_pruefen(DATEN, md))
 
-    def test_angehaengter_absatz_ist_warnung(self):
-        # Google Docs zieht einen Absatz direkt nach dem Kästchen in dieselbe Zeile
+    def test_angehaengter_absatz_bleibt_merkmal(self):
+        # Google Docs zieht einen Absatz direkt nach dem Kästchen in dieselbe Zeile; das Kästchen bleibt ein Merkmal
         md = MD.replace('- [ ] *unsicher*\n\n---\n\n## 2', '- [ ] *unsicher* **Hinweis:** etwas\n\n---\n\n## 2', 1)
         self.assertNotEqual(md, MD)
-        abw, warn = bauen.lernskript_pruefen(DATEN, md)
-        self.assertEqual(abw, [])
-        self.assertEqual(len(warn), 1)
-        self.assertIn('1.Q03', warn[0])
+        self.assertEqual(bauen.lernskript_pruefen(DATEN, md), [])
 
 
 class Probeklausur(unittest.TestCase):
