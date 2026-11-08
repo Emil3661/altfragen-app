@@ -1,0 +1,78 @@
+/* Gestaltung für das Handy: große Tippflächen, helles und dunkles Schema nach Systemeinstellung. */
+:root { --grund: #f6f7f8; --flaeche: #ffffff; --text: #16202a; --leise: #5c6873; --linie: #d9dee3; --akzent: #0b6e6e; --akzent-text: #ffffff; --gut: #1a7f4b; --gut-grund: #e5f4ec; --schlecht: #b3372f; --schlecht-grund: #fbe9e7; --warn: #fff3d6; --warn-text: #5e4400; --wahl: #dff1f1; --auf: #ffffff; }
+@media (prefers-color-scheme: dark) { :root { --grund: #11161b; --flaeche: #1a2128; --text: #e8edf1; --leise: #9aa6b1; --linie: #2c353e; --akzent: #38b2ac; --akzent-text: #06201f; --gut: #4ecb8d; --gut-grund: #13301f; --schlecht: #ef7d74; --schlecht-grund: #3a1b18; --warn: #3a2f12; --warn-text: #f2d893; --wahl: #12302f; --auf: #0b1a12; } }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--grund); color: var(--text); font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#app { max-width: 620px; margin: 0 auto; padding: 18px 16px calc(40px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; }
+h1 { font-size: 27px; margin: 6px 0 0; line-height: 1.2; }
+h2 { font-size: 20px; margin: 2px 0; line-height: 1.3; overflow-wrap: anywhere; }
+h3 { font-size: 15px; margin: 6px 0 0; color: var(--leise); font-weight: 650; }
+h4 { font-size: 15px; margin: 10px 0 2px; }
+p { margin: 0; }
+.unter { color: var(--leise); font-size: 15px; }
+.klein { font-size: 13px; margin-top: 4px; }
+.klein0 { font-size: 13px; }
+.marke { color: var(--leise); font-size: 13px; font-weight: 650; }
+.rot { color: var(--schlecht); }
+.gruen { color: var(--gut); font-weight: 600; align-self: center; flex: 1; }
+.karte { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; }
+.karte h2, .karte h3 { margin: 0; }
+.knopf { font: inherit; width: 100%; min-height: 50px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--linie); background: var(--flaeche); color: var(--text); cursor: pointer; touch-action: manipulation; }
+.knopf:active { transform: scale(.985); }
+.haupt { background: var(--akzent); border-color: var(--akzent); color: var(--akzent-text); font-weight: 650; }
+.aus { opacity: .45; }
+.leise { background: transparent; color: var(--leise); min-height: 44px; }
+.gut-knopf { background: var(--gut); border-color: var(--gut); color: var(--auf); font-weight: 650; }
+.schlecht-knopf { background: var(--schlecht); border-color: var(--schlecht); color: var(--auf); font-weight: 650; }
+.leiste { display: flex; gap: 9px; }
+.leiste .knopf { flex: 1; min-width: 0; }
+.leiste.unten { margin-top: 6px; }
+.segment { display: flex; gap: 6px; }
+.segment .knopf { min-height: 42px; padding: 8px; font-size: 15px; }
+.segment .knopf.an { background: var(--akzent); border-color: var(--akzent); color: var(--akzent-text); font-weight: 650; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--linie); color: var(--leise); }
+.chip.an { color: var(--gut); border-color: var(--gut); }
+.kopf { display: flex; align-items: center; gap: 8px; }
+.zurueck { font: inherit; font-size: 30px; line-height: 1; width: 44px; height: 44px; flex: none; border: 0; background: transparent; color: var(--leise); cursor: pointer; }
+.verweis { font: inherit; border: 0; background: none; color: var(--akzent); text-decoration: underline; padding: 0; cursor: pointer; }
+.status { font-size: 13px; color: var(--leise); text-align: center; margin-top: 6px; }
+.stamm { font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.aussagen { margin: 0; padding-left: 22px; }
+.wahl { display: flex; flex-direction: column; gap: 9px; }
+.option { text-align: left; min-height: 54px; overflow-wrap: anywhere; }
+.option.gewaehlt { background: var(--wahl); border-color: var(--akzent); }
+.option.richtig { background: var(--gut-grund); border-color: var(--gut); color: var(--text); opacity: 1; }
+.option.daneben { background: var(--schlecht-grund); border-color: var(--schlecht); color: var(--text); opacity: 1; }
+.option.blass { opacity: .6; }
+.option:disabled { cursor: default; }
+.urteil { font-weight: 700; font-size: 19px; }
+.urteil.gut { color: var(--gut); }
+.urteil.schlecht { color: var(--schlecht); }
+.loesung-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.loesung-liste li { display: flex; gap: 8px; font-size: 15px; overflow-wrap: anywhere; }
+.loesung-liste .zeichen { flex: none; width: 1.2em; font-weight: 700; }
+.loesung-liste li.zu .zeichen { color: var(--gut); }
+.loesung-liste li.nicht .zeichen { color: var(--schlecht); }
+.haken { text-align: left; min-height: 44px; font-size: 15px; }
+.haken.an { border-color: var(--akzent); background: var(--wahl); }
+.hinweis { background: var(--warn); color: var(--warn-text); padding: 9px 11px; border-radius: 10px; font-size: 15px; }
+.uhr { font-weight: 700; font-size: 15px; text-align: right; }
+.md { font-size: 16px; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 6px; }
+.md ul, .md ol { margin: 0; padding-left: 20px; }
+.md li { margin: 2px 0; }
+.md li ul, .md li ol { margin-top: 2px; }
+.tabelle { overflow-x: auto; }
+.tabelle table { border-collapse: collapse; font-size: 14px; width: 100%; }
+.tabelle td, .tabelle th { border: 1px solid var(--linie); padding: 5px 7px; text-align: left; vertical-align: top; }
+.mehr summary { color: var(--leise); font-size: 15px; padding: 6px 0; cursor: pointer; }
+.mehr[open] summary { margin-bottom: 4px; }
+.balken { font: inherit; color: inherit; display: grid; grid-template-columns: 1fr; gap: 4px; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--linie); background: var(--flaeche); text-align: left; cursor: pointer; width: 100%; }
+.balken.fertig { border-color: var(--gut); }
+.balken-name { font-size: 15px; }
+.balken-zahl { font-size: 13px; color: var(--leise); }
+.balken-spur { height: 6px; border-radius: 4px; background: var(--linie); overflow: hidden; }
+.balken-wert { display: block; height: 100%; background: var(--akzent); }
+.feld { display: flex; flex-direction: column; gap: 5px; font-size: 15px; }
+.eingabe { width: 100%; font: inherit; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--linie); background: var(--flaeche); color: var(--text); }

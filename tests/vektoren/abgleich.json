@@ -1,0 +1,662 @@
+[
+ {
+  "name": "Erster Abgleich übernimmt die Haken aus Docs",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T17:25:00.000Z",
+  "jetzt": "2026-11-08T21:00:00.000Z",
+  "fortschritt": {
+   "versuche": {},
+   "md": {
+    "zeit": null,
+    "basis": {},
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [],
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {}
+  }
+ },
+ {
+  "name": "Zweiter Abgleich ohne Änderung legt nichts doppelt an",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T17:25:00.000Z",
+  "jetzt": "2026-11-08T21:05:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u1f0:2026-11-08T17:25:00.000Z",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": true,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "docs:1.Q03:#u0f1:2026-11-08T17:25:00.000Z",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "docs:2.Q01:Erbse|Gurke#u0f0:2026-11-08T17:25:00.000Z",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [],
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {}
+  }
+ },
+ {
+  "name": "Antwort aus der App landet in der .md",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T17:25:00.000Z",
+  "jetzt": "2026-11-08T21:10:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u1f0:2026-11-08T17:25:00.000Z",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": true,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q02": [
+     {
+      "id": "a1",
+      "zeit": "2026-11-08T21:08:00.000Z",
+      "wahl": [
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:08:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ],
+    "1.Q02": [
+     "Gurke#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "1.Q02"
+   ],
+   "zeilen": {
+    "- [x] Gurke": 2
+   },
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q02": "Gurke#u0f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {
+    "1.Q02": [
+     "#u0f0"
+    ]
+   }
+  }
+ },
+ {
+  "name": "Alte Fassung aus Docs löscht keine Antwort der App",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q02": [
+     {
+      "id": "a1",
+      "zeit": "2026-11-08T21:08:00.000Z",
+      "wahl": [
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:08:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q01": [
+     {
+      "id": "d1",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": true,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "a3",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "a4",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "md": {
+    "zeit": "2026-11-08T21:10:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q02": "Gurke#u0f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {
+     "1.Q02": [
+      "#u0f0"
+     ]
+    }
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ],
+    "1.Q02": [
+     "Gurke#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "1.Q02"
+   ],
+   "zeilen": {
+    "- [x] Gurke": 2
+   },
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q02": "Gurke#u0f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {
+    "1.Q02": [
+     "#u0f0"
+    ]
+   }
+  }
+ },
+ {
+  "name": "Stand einer alten Fassung, die die App überschrieben hat, wird ignoriert",
+  "ersetze": [
+   [
+    "- [x] Apfel  ",
+    "- [ ] Apfel  "
+   ],
+   [
+    "- [ ] Banane  ",
+    "- [x] Banane  "
+   ]
+  ],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "a2",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": true,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "a3",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "a4",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "md": {
+    "zeit": "2026-11-08T21:16:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {
+     "1.Q01": [
+      "Banane#u1f0"
+     ]
+    }
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "1.Q01"
+   ],
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {
+    "1.Q01": [
+     "Banane#u1f0"
+    ]
+   }
+  }
+ },
+ {
+  "name": "Korrektur in Docs wird neuer Versuch",
+  "ersetze": [
+   [
+    "- [x] Apfel  ",
+    "- [ ] Apfel  "
+   ],
+   [
+    "- [ ] Banane  ",
+    "- [x] Banane  "
+   ]
+  ],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "a2",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": true,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "a3",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "a4",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "md": {
+    "zeit": "2026-11-08T21:16:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u1f0",
+     "Banane#u1f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [],
+   "basis": {
+    "1.Q01": "Banane#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {}
+  }
+ },
+ {
+  "name": "Nur unsicher in Docs geändert passt den letzten Versuch an",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "a2",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "a3",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "a4",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "md": {
+    "zeit": "2026-11-08T21:16:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u0f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [],
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {}
+  }
+ },
+ {
+  "name": "In der App zurückgenommene Antwort verschwindet aus der .md",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T17:25:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u1f0:2026-11-08T17:25:00.000Z",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": true,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:20:00.000Z",
+      "geloescht": "2026-11-08T21:20:00.000Z"
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "a3",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "a4",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "md": {
+    "zeit": "2026-11-08T21:16:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "1.Q01"
+   ],
+   "zeilen": {
+    "- [x] Apfel  ": 0,
+    "- [x] *unsicher*": 0
+   },
+   "basis": {
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ]
+   }
+  }
+ }
+]

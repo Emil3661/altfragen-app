@@ -1,0 +1,54 @@
+{
+  "format": 1,
+  "fach": "test",
+  "name": "Testfach",
+  "klausur": "2027-02-12",
+  "klausurInfo": "3 Fragen in 5 Minuten",
+  "stand": "2026-11-08T21:30:00+01:00",
+  "plan": "rang",
+  "bloecke": [],
+  "themen": [
+    {
+      "rang": 1,
+      "titel": "Obst",
+      "stufe": null,
+      "block": null,
+      "meta": "erwartet 1,00 von 3 Fragen",
+      "kern": "- **Äpfel** sind rund\n  - auch grün\n**Gruppe**\n- Birnen 3. Klasse",
+      "falle": null,
+      "tabellen": "| | |\n|---|---|\n| Apfel | rund |",
+      "gefragt": ["**2×** Obst erkennen"],
+      "abschnitte": [],
+      "fragen": [
+        {"id": "1.Q01", "nr": 1, "abschnitt": null, "mal": 1, "typ": "positiv", "stamm": "Was ist rund?", "aussagen": null,
+         "optionen": [{"t": "Banane", "w": "krumm", "richtig": false, "erg": false}, {"t": "Apfel", "w": "", "richtig": true, "erg": false}, {"t": "Birne 3. Klasse = gut", "w": "", "richtig": false, "erg": true}],
+         "loesung": null, "neu": [], "hinweis": [], "ids": "2526-01"},
+        {"id": "1.Q02", "nr": 2, "abschnitt": null, "mal": 2, "typ": "negativ", "stamm": "Was ist kein Obst?", "aussagen": null,
+         "optionen": [{"t": "Kiwi", "w": "", "richtig": false, "erg": false}, {"t": "Gurke", "w": "Gemüse", "richtig": true, "erg": false}, {"t": "Pflaume", "w": "", "richtig": false, "erg": false}],
+         "loesung": null, "neu": ["Gurken sind Kürbisgewächse."], "hinweis": [], "ids": "2425-03 · 2526-02"},
+        {"id": "1.Q03", "nr": 3, "abschnitt": null, "mal": 1, "typ": "offen", "stamm": "Nenne eine Zitrusfrucht.", "aussagen": null,
+         "optionen": [], "loesung": {"t": "Zitrone", "w": "sauer"}, "neu": [], "hinweis": [], "ids": "2324-07"}
+      ]
+    },
+    {
+      "rang": 2,
+      "titel": "Gemüse",
+      "stufe": null,
+      "block": null,
+      "meta": "erwartet 0,50 von 3 Fragen",
+      "kern": "- Gemüse",
+      "falle": null,
+      "tabellen": "",
+      "gefragt": [],
+      "abschnitte": [],
+      "fragen": [
+        {"id": "2.Q01", "nr": 1, "abschnitt": null, "mal": 1, "typ": "positiv", "stamm": "Welche sind grün? (zwei)", "aussagen": null,
+         "optionen": [{"t": "Erbse", "w": "", "richtig": true, "erg": false}, {"t": "Tomate", "w": "rot", "richtig": false, "erg": false}, {"t": "Gurke", "w": "", "richtig": true, "erg": false}],
+         "loesung": null, "neu": [], "hinweis": [], "ids": "2526-09"},
+        {"id": "2.Q03", "nr": 2, "abschnitt": null, "mal": 1, "typ": "fragment", "stamm": "Irgendwas mit Lauch", "aussagen": null,
+         "optionen": [], "loesung": {"t": "nicht rekonstruierbar", "w": "Lauch ist ein Zwiebelgewächs"}, "neu": [], "hinweis": [], "ids": "1920-11"}
+      ]
+    }
+  ],
+  "probeklausuren": [{"name": "Probeklausur 1", "minuten": 5, "fragen": ["1.Q01", "1.Q02", "2.Q01"]}]
+}

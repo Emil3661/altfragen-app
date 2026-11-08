@@ -1,0 +1,53 @@
+[
+ {
+  "name": "Docs-Fassung mit Escapes und angehängten Leerzeichen",
+  "datei": "lernskript.md",
+  "zustaende": {
+   "1.Q01": "Apfel#u1f0",
+   "1.Q02": "#u0f0",
+   "1.Q03": "#u0f1",
+   "2.Q01": "Erbse|Gurke#u0f0"
+  },
+  "fehler": []
+ },
+ {
+  "name": "Option, die es in der Frage nicht gibt",
+  "text": "## 1 · Obst\n\n**Frage 1**\n\n- [x] Melone\n- [ ] Apfel\n",
+  "zustaende": {},
+  "fehler": [
+   "1.Q01"
+  ]
+ },
+ {
+  "name": "Frage, die es im Thema nicht gibt",
+  "text": "## 1 · Obst\n\n**Frage 9**\n\n- [x] Apfel\n",
+  "zustaende": {},
+  "fehler": [
+   "1#9"
+  ]
+ },
+ {
+  "name": "Windows-Zeilenenden",
+  "text": "## 1 · Obst\r\n**Frage 1**\r\n- [ ] Banane\r\n- [x] Apfel\r\n**Lösung:** Apfel\r\n- [ ] *unsicher*\r\n",
+  "zustaende": {
+   "1.Q01": "Apfel#u0f0"
+  },
+  "fehler": []
+ },
+ {
+  "name": "Kästchen vor der ersten Frage gehören zu keiner Frage",
+  "text": "- [x] Apfel\n## 1 · Obst\n- [x] Apfel\n**Frage 1**\n- [ ] Apfel\n",
+  "zustaende": {
+   "1.Q01": "#u0f0"
+  },
+  "fehler": []
+ },
+ {
+  "name": "Merkmal mit angehängter Folgezeile aus Google Docs",
+  "text": "## 1 · Obst\n**Frage 3**\n**Lösung:** Zitrone\n- [ ] *falsch*  \n- [x] *unsicher* **Hinweis:** Protokoll unvollständig\n",
+  "zustaende": {
+   "1.Q03": "#u1f0"
+  },
+  "fehler": []
+ }
+]

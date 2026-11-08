@@ -1,0 +1,13 @@
+{
+  "name": "Altfragen",
+  "short_name": "Altfragen",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7f8",
+  "theme_color": "#0b6e6e",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
