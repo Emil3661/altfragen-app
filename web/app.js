@@ -349,10 +349,13 @@
       const info = [`${st.beantwortet}/${st.gesamt}`];
       if (st.beantwortet) info.push(`${Math.round(100 * st.richtig / st.beantwortet)} % sicher`);
       if (st.faellig) info.push(`${st.faellig} fällig`);
+      // Breite über das style-Objekt: Die CSP der Seite verbietet style-Attribute im Markup
+      const wert = el('span', { class: 'balken-wert' });
+      wert.style.width = `${Math.round(anteil * 100)}%`;
       teile.push(el('button', { class: 'balken' + (st.fertig ? ' fertig' : ''), onclick: () => zeige('thema', { rang: t.rang }) },
         el('span', { class: 'balken-name' }, el('strong', { text: `${t.rang} ` }), t.titel, t.stufe ? el('span', { class: 'unter', text: ` · ${t.stufe}` }) : null),
         el('span', { class: 'balken-zahl', text: info.join(' · ') }),
-        el('span', { class: 'balken-spur' }, el('span', { class: 'balken-wert', style: `width:${Math.round(anteil * 100)}%` }))));
+        el('span', { class: 'balken-spur' }, wert)));
     }
     teile.push(statusZeile());
     return teile;
