@@ -433,7 +433,9 @@ const Kern = (() => {
     }
     st.meditricks = schrittWert(f, t.rang, 'meditricks');
     st.kern = schrittWert(f, t.rang, 'kern');
-    st.fertig = st.beantwortet === st.gesamt && !!st.kern && !!st.meditricks;
+    // Fertig, sobald jede Frage einmal beantwortet ist. Meditricks und Kern zeigt die App als Schritte an,
+    // sie halten den Plan aber nicht auf
+    st.fertig = st.beantwortet === st.gesamt;
     return st;
   }
 

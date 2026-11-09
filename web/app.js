@@ -6,7 +6,7 @@
   const M = Markdown;
   const D = Drive;
   const BEREICH = 'https://www.googleapis.com/auth/drive.file';
-  const VERSION = '1.1';
+  const VERSION = '1.2';
 
   // ---------- Ablage im Browser (IndexedDB) ----------
   // Schlüssel-Wert-Speicher: konfig, fragen:<fach>, fortschritt:<fach>. Größer als localStorage erlaubt.
@@ -623,8 +623,9 @@
         else klasse += ' blass';
       } else if (gewaehlt) klasse += ' gewaehlt';
       // Nach dem Lösen steht die Begründung direkt unter der Option
+      if (geloest && o.erg) klasse += ' mit-e';
       liste.append(el('button', { class: klasse, disabled: geloest || null, onclick: () => tippen(q, o, mehrere) },
-        el('span', { class: 'opt-text' }, mdZeile(o.t)), geloest ? grundZeile(q, o) : null));
+        el('span', { class: 'opt-text' }, mdZeile(o.t)), geloest ? grundZeile(q, o) : null, geloest && o.erg ? ergMarke() : null));
     }
     teile.push(liste);
     if (!geloest && (mehrere || probe)) {
@@ -688,12 +689,13 @@
   function grundZeile(q, o) {
     const neg = q.typ === 'negativ';
     const trifft = neg ? !o.richtig : o.richtig;
-    if (!o.w && !neg) return o.erg ? el('span', { class: 'grund', text: '(ergänzt)' }) : null;
+    if (!o.w && !neg) return null;
     return el('span', { class: 'grund' },
       el('span', { class: 'zeichen ' + (trifft ? 'zu' : 'nicht'), text: trifft ? '✓ ' : '✗ ' }),
-      o.w ? mdZeile(o.w) : (trifft ? 'trifft zu' : 'trifft nicht zu'),
-      o.erg ? el('em', { text: ' (ergänzt)' }) : null);
+      o.w ? mdZeile(o.w) : (trifft ? 'trifft zu' : 'trifft nicht zu'));
   }
+  // Kleines E unten rechts: Option nicht aus dem Protokoll, ergänzt. Erst nach dem Lösen, sonst verrät es Falsche
+  const ergMarke = () => el('span', { class: 'erg-marke', title: 'ergänzt, nicht im Protokoll', 'aria-label': 'ergänzt', text: 'E' });
 
   // Lösung: Urteil, unsicher-Schalter, Extra-Fakten. Die Begründungen stehen schon an den Optionen.
   function loesung(q, v) {

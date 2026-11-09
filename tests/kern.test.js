@@ -157,6 +157,15 @@ test('Tempo und nächstes Thema', () => {
   assert.strictEqual(n.stand.naechste.id, '1.Q01');
 });
 
+test('Nächstes Thema, sobald alle Fragen einmal beantwortet sind, auch ohne Meditricks und Kern', () => {
+  const f = K.leererFortschritt('test');
+  K.versuchBuchen(f, '1.Q01', { wahl: ['Banane'] }, '2026-11-09T10:00:00Z', 'g');
+  K.versuchBuchen(f, '1.Q02', { wahl: ['Gurke'] }, '2026-11-09T10:01:00Z', 'g');
+  assert.strictEqual(K.naechstesThema(daten, f, '2026-11-09').thema.rang, 1);
+  K.versuchBuchen(f, '1.Q03', { wahl: [], unsicher: true }, '2026-11-09T10:02:00Z', 'g');
+  assert.strictEqual(K.naechstesThema(daten, f, '2026-11-09').thema.rang, 2);
+});
+
 test('Docs-Escapes zählen als dieselbe Option', () => {
   assert.strictEqual(K.normal('Birne 3\\. Klasse \\= gut  '), 'Birne 3. Klasse = gut');
   assert.strictEqual(K.normal('*unsicher*'), 'unsicher');
