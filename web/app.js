@@ -6,7 +6,7 @@
   const M = Markdown;
   const D = Drive;
   const BEREICH = 'https://www.googleapis.com/auth/drive.file';
-  const VERSION = '1.0';
+  const VERSION = '1.1';
 
   // ---------- Ablage im Browser (IndexedDB) ----------
   // Schlüssel-Wert-Speicher: konfig, fragen:<fach>, fortschritt:<fach>. Größer als localStorage erlaubt.
@@ -183,13 +183,14 @@
   // ---------- Abgleich mit Drive ----------
   // Je Fach: Fragen aktualisieren, Fortschritt von Drive holen und zusammenführen, Lernskript abgleichen,
   // dann beides hochladen. Antworten, die währenddessen dazukommen, werden am Ende erneut eingemischt.
+  // Meldungen des laufenden Abgleichs sammeln sich in lauf und gehen erst am Ende in die Statuszeile,
+  // damit eine bleibende Meldung währenddessen nicht verschwindet und wiederkommt
+  let lauf = { fehler: '', hinweis: '' };
   async function abgleich() {
     if (sync.laeuft) { sync.nochmal = true; return; }
     if (!D.gueltig()) { statusZeichnen(); return; }
     sync.laeuft = true;
-    sync.fehler = '';
-    sync.hinweis = '';
-    statusZeichnen();
+    lauf = { fehler: '', hinweis: '' };
     let neueDaten = false;
     try {
       const cfg = await D.suchen('config');
@@ -200,15 +201,17 @@
         try {
           neueDaten = (await fachAbgleichen(fk)) || neueDaten;
         } catch (e) {
-          sync.fehler = `${fk.name}: ${e.message}`;
+          lauf.fehler = `${fk.name}: ${e.message}`;
           if (e.code === 401) break;
         }
       }
       if (!faecher[aktivFach]) aktivFach = Object.keys(faecher)[0] || null;
-      if (!sync.fehler) { sync.zeit = jetzt(); sync.offen = false; }
+      if (!lauf.fehler) { sync.zeit = jetzt(); sync.offen = false; }
     } catch (e) {
-      sync.fehler = e.message;
+      lauf.fehler = e.message;
     } finally {
+      sync.fehler = lauf.fehler;
+      sync.hinweis = lauf.hinweis;
       sync.laeuft = false;
       const s = stapel[stapel.length - 1];
       // Nur Übersichten neu zeichnen, an der Stelle, an der man steht; in Thema und Frage nur die Statuszeile
@@ -248,7 +251,7 @@
         const text = await D.lesen(fk.lernskript);
         const r = K.abgleichen(fa.fortschritt, text, mm.modifiedTime, fa.ix, jetzt());
         sync.lesefehler[fk.id] = r.fehler;
-        if (r.abbruch) sync.hinweis = `${fk.name}: ${r.abbruch}`;
+        if (r.abbruch) lauf.hinweis = `${fk.name}: ${r.abbruch}`;
         const f = r.fortschritt;
         if (r.mdNeu !== null) {
           const kurz = await D.metadaten(fk.lernskript);
@@ -257,7 +260,7 @@
             await D.schreiben(fk.lernskript, r.mdNeu, 'text/markdown');
           } catch (e) {
             f.md = r.mdAlt;
-            sync.fehler = `${fk.name}: Lernskript nicht geschrieben (${e.message})`;
+            lauf.fehler = `${fk.name}: Lernskript nicht geschrieben (${e.message})`;
           }
         }
         await hochladen(fk, f);
@@ -294,25 +297,42 @@
   // Kommt die Anmeldung erst nach einer Fehlmeldung des Google-Fensters an, trotzdem abgleichen
   D.beiAnmeldung(() => { statusZeichnen(); abgleich(); });
 
+  // Abgelaufene Anmeldung beim nächsten Tippen irgendwo in der App still erneuern, statt auf „Verbinden“ zu warten.
+  // Google öffnet dabei kurz ein Fenster, das sich selbst schließt; Browser erlauben das nur direkt nach einer
+  // Berührung. Nur mit gemerktem Konto, mit Netz und höchstens alle zehn Minuten, damit ein Fehlschlag nicht bei
+  // jedem Tipp kommt. Nicht auf Knöpfen, die selbst anmelden (data-anmeldung), und nicht in den Einstellungen,
+  // wo Abmelden liegt. true = Auffangphase: läuft vor dem eigentlichen Klick, der danach normal weiterwirkt.
+  let stillVersucht = 0;
+  document.addEventListener('click', e => {
+    if (D.gueltig() || !D.kannStillErneuern() || !navigator.onLine || Date.now() - stillVersucht < 10 * 60000) return;
+    if (e.target && e.target.closest && e.target.closest('[data-anmeldung]')) return;
+    const s = stapel[stapel.length - 1];
+    if (s && s.name === 'einstellungen') return;
+    stillVersucht = Date.now();
+    D.anmelden().then(() => abgleich()).catch(() => statusZeichnen());
+  }, true);
+
+  // Ausdrücklich verbinden: immer eine neue Anfrage an Google, auch wenn eine ältere liegen geblieben ist
   async function verbinden() {
     try {
       await D.vorbereiten(KONFIG.clientId, BEREICH);
-      await D.anmelden();
+      await D.anmelden(true);
       await abgleich();
     } catch (e) {
       sync.fehler = e.message;
       statusZeichnen();
     }
   }
+  const verbindenKnopf = (text, klasse) => el('button', { class: klasse, onclick: verbinden, 'data-anmeldung': true, text });
 
-  // Statuszeile unten: abgeglichen, läuft, offen, Fehler oder Verbinden.
-  function statusZeile() {
-    const z = el('div', { class: 'status', id: 'status' });
-    if (sync.laeuft) z.append('Gleiche mit Drive ab …');
-    else if (!D.gueltig()) z.append(el('span', { text: sync.offen ? 'Neue Antworten noch nicht auf Drive. ' : 'Nicht mit Drive verbunden. ' }), el('button', { class: 'verweis', onclick: verbinden, text: 'Verbinden' }));
+  // Statuszeile unten. Ruhig: Ein laufender oder geplanter Abgleich ändert den Text nicht, er zeigt bis zum Ende
+  // den letzten Stand. Laut wird sie nur bei Fehler oder fehlender Verbindung.
+  // modus 'leise' (Fragen): nur Fehler, Hinweise und fehlende Verbindung, sonst leer.
+  function statusZeile(modus = '') {
+    const z = el('div', { class: 'status', id: 'status', 'data-modus': modus || null });
+    if (!D.gueltig() && !sync.laeuft) z.append(el('span', { text: sync.offen ? 'Neue Antworten liegen nur auf dem Gerät. ' : 'Nicht mit Drive verbunden. ' }), verbindenKnopf('Verbinden', 'verweis'));
     else if (sync.fehler) z.append(el('span', { class: 'rot', text: sync.fehler + ' ' }), el('button', { class: 'verweis', onclick: abgleich, text: 'Erneut' }));
-    else if (sync.offen) z.append('Antworten werden gleich abgeglichen');
-    else if (sync.zeit) z.append(`Abgeglichen ${uhrzeit(sync.zeit)}`);
+    else if (modus !== 'leise') z.append(sync.zeit ? `Abgeglichen ${uhrzeit(sync.zeit)}` : 'Mit Drive verbunden');
     if (sync.hinweis) z.append(el('div', { class: 'rot', text: sync.hinweis }));
     if (sync.kurz) z.append(el('div', { class: 'rot', text: sync.kurz }));
     return z;
@@ -325,9 +345,12 @@
     clearTimeout(kurzUhr);
     kurzUhr = setTimeout(() => { sync.kurz = ''; statusZeichnen(); }, 3000);
   }
+  // Nur ersetzen, wenn sich der Inhalt ändert, damit nichts flackert
   function statusZeichnen() {
     const alt = document.getElementById('status');
-    if (alt) alt.replaceWith(statusZeile());
+    if (!alt) return;
+    const neu = statusZeile(alt.dataset.modus || '');
+    if (neu.innerHTML !== alt.innerHTML) alt.replaceWith(neu);
   }
 
   // ---------- Bildschirm: Anmeldung ----------
@@ -335,7 +358,7 @@
     return [
       el('h1', { text: 'Altfragen' }),
       el('p', { class: 'unter', text: 'Fragen und Lernstand liegen auf deinem Google Drive. Nach der Anmeldung läuft die App auch ohne Netz.' }),
-      knopf('Mit Google anmelden', verbinden, 'haupt'),
+      verbindenKnopf('Mit Google anmelden', 'knopf haupt'),
       sync.laeuft || sync.fehler ? statusZeile() : el('div', { id: 'status' }),
     ];
   }
@@ -389,6 +412,16 @@
     }
     pk.append(el('p', { class: 'unter klein', text: tp.offen ? `Erster Durchgang bis ${datum(tp.ziel)}: ${tp.offen} Fragen offen, etwa ${tp.proTag} pro Tag` : `Erster Durchgang vollständig` }));
     teile.push(pk);
+
+    // Fehlersammlung: alles, was je falsch oder unsicher war, bleibt hier, auch wenn es inzwischen sitzt
+    const fs = K.fehlerSammlung(d, f);
+    if (fs.length) {
+      const n = Math.min(fs.length, einstellungen.rundeGroesse);
+      teile.push(el('section', { class: 'karte' }, el('h2', { text: 'Fehlersammlung' }),
+        el('p', { text: `${fs.length} Fragen, die du je falsch oder unsicher hattest` + (fs.length > n ? `, diese Runde ${n}` : '') }),
+        el('p', { class: 'unter klein0', text: 'Bleiben drin, auch wenn sie später sitzen.' }),
+        knopf('Durchgehen', () => rundeStarten('fehler', fs.slice(0, n).map(x => x.frage.id)))));
+    }
 
     teile.push(el('div', { class: 'leiste' },
       knopf('Themen', () => zeige('themen')),
@@ -477,8 +510,9 @@
     // 3 Fragen
     const fr = el('section', { class: 'karte' }, el('h3', { text: `3 · Fragen: ${st.beantwortet} von ${st.gesamt}` }));
     if (st.naechste) fr.append(knopf(st.beantwortet ? `Weiter mit Frage ${st.naechste.nr}` : 'Fragen starten', () => themaRunde(t, 'weiter'), 'haupt'));
-    const schwach = t.fragen.filter(q => { const w = K.wiederholung(q, f.versuche[q.id], heute(), fa.daten.klausur); return w.letztes === 'falsch' || w.letztes === 'unsicher'; });
-    if (schwach.length) fr.append(knopf(`Falsche und unsichere (${schwach.length})`, () => themaRunde(t, 'schwach')));
+    // Je falsch oder unsicher, wie in der Fehlersammlung der Startseite
+    const schwach = K.fehlerSammlung(fa.daten, f).filter(x => x.thema.rang === t.rang);
+    if (schwach.length) fr.append(knopf(`Je falsch oder unsicher (${schwach.length})`, () => themaRunde(t, 'schwach')));
     if (st.beantwortet) fr.append(knopf('Alle von vorn', () => themaRunde(t, 'alle'), 'leise'));
     fr.append(el('p', { class: 'unter klein', text: 'Danach, wo es noch hakt: der passende Amboss-Abschnitt. Falsche und unsichere kommen nach zwei bis drei Tagen wieder.' }));
     const ls = lernskriptId();
@@ -505,7 +539,9 @@
       pos = Math.max(0, i);
     }
     if (wie === 'schwach') {
-      liste = qs.filter(q => { const w = K.wiederholung(q, fa.fortschritt.versuche[q.id], heute(), fa.daten.klausur); return w.letztes === 'falsch' || w.letztes === 'unsicher'; });
+      // Fehlersammlung dieses Themas: je falsch oder unsicher, in Reihenfolge des Themas
+      const drin = new Set(K.fehlerSammlung(fa.daten, fa.fortschritt).filter(x => x.thema.rang === t.rang).map(x => x.frage.id));
+      liste = qs.filter(q => drin.has(q.id));
     }
     rundeStarten(wie === 'schwach' ? 'wiederholen' : 'thema', liste.map(q => q.id), pos, t.rang);
   }
@@ -586,15 +622,17 @@
         else if (gewaehlt) klasse += ' daneben';
         else klasse += ' blass';
       } else if (gewaehlt) klasse += ' gewaehlt';
-      liste.append(el('button', { class: klasse, disabled: geloest || null, onclick: () => tippen(q, o, mehrere) }, mdZeile(o.t)));
+      // Nach dem Lösen steht die Begründung direkt unter der Option
+      liste.append(el('button', { class: klasse, disabled: geloest || null, onclick: () => tippen(q, o, mehrere) },
+        el('span', { class: 'opt-text' }, mdZeile(o.t)), geloest ? grundZeile(q, o) : null));
     }
     teile.push(liste);
     if (!geloest && (mehrere || probe)) {
       if (mehrere && !probe) teile.push(knopf('Prüfen', () => antworten(q, auswahl), 'haupt' + (auswahl.length ? '' : ' aus')));
     }
-    if (geloest) teile.push(...loesung(q, v, opts));
+    if (geloest) teile.push(...loesung(q, v));
     teile.push(weiterLeiste(geloest || probe));
-    teile.push(statusZeile());
+    teile.push(statusZeile('leise'));
     return teile;
   }
 
@@ -645,20 +683,23 @@
     return teile;
   }
 
-  // Lösung wie im Lernskript: jede Option mit ✓ trifft zu / ✗ trifft nicht zu, fett = anzukreuzen, Begründung dahinter.
-  function loesung(q, v, opts) {
+  // Begründung unter einer Option: ✓ trifft zu / ✗ trifft nicht zu, dahinter der Grund.
+  // Ohne Grund nur bei negativ gestellten Fragen, weil dort grün (anzukreuzen) nicht „trifft zu“ heißt.
+  function grundZeile(q, o) {
+    const neg = q.typ === 'negativ';
+    const trifft = neg ? !o.richtig : o.richtig;
+    if (!o.w && !neg) return o.erg ? el('span', { class: 'grund', text: '(ergänzt)' }) : null;
+    return el('span', { class: 'grund' },
+      el('span', { class: 'zeichen ' + (trifft ? 'zu' : 'nicht'), text: trifft ? '✓ ' : '✗ ' }),
+      o.w ? mdZeile(o.w) : (trifft ? 'trifft zu' : 'trifft nicht zu'),
+      o.erg ? el('em', { text: ' (ergänzt)' }) : null);
+  }
+
+  // Lösung: Urteil, unsicher-Schalter, Extra-Fakten. Die Begründungen stehen schon an den Optionen.
+  function loesung(q, v) {
     const e = v ? K.ergebnis(q, v) : null;
     const urteil = !e ? 'Nicht beantwortet' : e === 'falsch' ? 'Falsch' : (e === 'unsicher' ? 'Richtig, unsicher' : 'Richtig');
     const teile = [el('p', { class: 'urteil ' + (e === 'richtig' || e === 'unsicher' ? 'gut' : 'schlecht'), text: urteil })];
-    const neg = q.typ === 'negativ';
-    const zeilen = el('ul', { class: 'loesung-liste' });
-    for (const o of opts) {
-      const trifft = neg ? !o.richtig : o.richtig;
-      zeilen.append(el('li', { class: trifft ? 'zu' : 'nicht' },
-        el('span', { class: 'zeichen', text: trifft ? '✓' : '✗' }),
-        el('span', {}, o.richtig ? el('strong', {}, mdZeile(o.t)) : mdZeile(o.t), o.w ? el('span', { class: 'unter' }, ' — ', mdZeile(o.w)) : null, o.erg ? el('em', { class: 'unter', text: ' (ergänzt)' }) : null)));
-    }
-    teile.push(zeilen);
     if (e === 'richtig' || e === 'unsicher') {
       // Versuch und Fortschritt erst beim Tippen holen, ein Abgleich kann beides inzwischen erneuert haben
       teile.push(el('button', { class: 'knopf haken' + (v.unsicher ? ' an' : ''), onclick: () => {
@@ -674,7 +715,9 @@
 
   function zusatz(q) {
     const teile = [];
-    for (const n of q.neu || []) teile.push(el('p', {}, el('strong', { text: 'Neu: ' }), mdZeile(n)));
+    if ((q.neu || []).length) {
+      teile.push(el('div', { class: 'extra' }, el('strong', { text: 'Extra-Fakten' }), el('ul', {}, ...q.neu.map(n => el('li', {}, mdZeile(n))))));
+    }
     for (const h of q.hinweis || []) teile.push(el('p', { class: 'hinweis' }, el('strong', { text: 'Hinweis: ' }), mdZeile(h)));
     if (q.ids) teile.push(el('p', { class: 'unter klein', text: q.ids }));
     return teile;
@@ -814,8 +857,8 @@
     } }, ...[10, 20, 30, 50].map(n => el('option', { value: n, selected: n === einstellungen.rundeGroesse || null, text: `${n} Fragen` })));
     teile.push(el('label', { class: 'feld' }, el('span', { text: 'Wiederholung je Runde' }), groesse));
     teile.push(el('h3', { text: 'Drive' }));
-    teile.push(el('p', { class: 'unter', text: D.gueltig() ? 'Verbunden. Der Zugang gilt eine Stunde, danach einmal auf Verbinden tippen.' : 'Nicht verbunden.' }));
-    teile.push(knopf(D.gueltig() ? 'Jetzt abgleichen' : 'Verbinden', () => (D.gueltig() ? abgleich() : verbinden())));
+    teile.push(el('p', { class: 'unter', text: D.gueltig() ? 'Verbunden. Der Zugang gilt eine Stunde und wird danach beim nächsten Tippen von selbst erneuert, Google blendet dafür kurz ein Fenster ein.' : 'Nicht verbunden.' }));
+    teile.push(D.gueltig() ? knopf('Jetzt abgleichen', () => abgleich()) : verbindenKnopf('Verbinden', 'knopf'));
     for (const [id, fe] of Object.entries(sync.lesefehler)) {
       if (fe && fe.length) teile.push(el('p', { class: 'rot klein', text: `${faecher[id] ? faecher[id].daten.name : id}: im Lernskript nicht lesbar und übersprungen: ${fe.join(', ')}` }));
     }

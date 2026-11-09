@@ -15,7 +15,7 @@ Das Repo enthält nur Code. Fragen und Lernstand liegen auf Google Drive und wer
 
 ## Zugriff
 
-Anmeldung mit Google, Berechtigung `drive.file`: Die App sieht nur Dateien, die das Projekt selbst angelegt hat. Der Zugang gilt eine Stunde und liegt nur im Tab. Ohne Netz läuft die App mit dem zuletzt geladenen Stand weiter.
+Anmeldung mit Google, Berechtigung `drive.file`: Die App sieht nur Dateien, die das Projekt selbst angelegt hat. Der Zugang gilt eine Stunde und liegt im Browser, damit er ein Schließen der App übersteht. Danach erneuert ihn der nächste Tipp in der App: Mit dem gemerkten Konto als Hinweis öffnet Google nur kurz ein Fenster, das sich selbst schließt. Ohne Netz läuft die App mit dem zuletzt geladenen Stand weiter.
 
 ## Abgleich mit dem Lernskript
 

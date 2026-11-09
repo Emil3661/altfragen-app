@@ -44,6 +44,16 @@ for (const fall of lade('wiederholung.json')) {
   });
 }
 
+// ---------- Vektoren: Fehlersammlung ----------
+for (const fall of lade('fehler.json')) {
+  test(`fehlerSammlung: ${fall.name}`, () => {
+    const versuche = Object.fromEntries(Object.entries(fall.versuche).map(([id, vs]) =>
+      [id, vs.map((v, i) => ({ id: `${id}:${i}`, unsicher: false, falsch: false, geloescht: null, ...v }))]));
+    const r = K.fehlerSammlung(daten, { versuche });
+    assert.deepStrictEqual(r.map(x => ({ frage: x.frage.id, falsch: x.falsch, unsicher: x.unsicher })), fall.erwartet);
+  });
+}
+
 // ---------- Vektoren: Abgleich ----------
 for (const fall of lade('abgleich.json')) {
   test(`abgleich: ${fall.name}`, () => {

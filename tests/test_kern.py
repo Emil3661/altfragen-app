@@ -70,6 +70,16 @@ class Vektoren(unittest.TestCase):
                 status, faellig = kern.wiederholung(frage(fall['frage']), versuche, fall['heute'], DATEN['klausur'])
                 self.assertEqual((status, faellig), (fall['status'], fall['faellig']))
 
+    def test_fehler_sammlung(self):
+        for fall in lade('fehler.json'):
+            with self.subTest(fall['name']):
+                # Fehlende Felder wie in der App ergänzen; {**a, **b} = b überschreibt a
+                versuche = {qid: [{'id': f'{qid}:{i}', 'unsicher': False, 'falsch': False, 'geloescht': None, **v}
+                                  for i, v in enumerate(vs)] for qid, vs in fall['versuche'].items()}
+                r = kern.fehler_sammlung(DATEN, {'versuche': versuche})
+                self.assertEqual([{'frage': x['frage']['id'], 'falsch': x['falsch'], 'unsicher': x['unsicher']} for x in r],
+                                 fall['erwartet'])
+
     def test_abgleich(self):
         for fall in lade('abgleich.json'):
             with self.subTest(fall['name']):

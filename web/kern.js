@@ -476,6 +476,24 @@ const Kern = (() => {
     return aus.sort((a, b) => (a.faellig < b.faellig ? -1 : a.faellig > b.faellig ? 1 : a.pos - b.pos));
   }
 
+  // Fehlersammlung: jede Frage, die je falsch oder unsicher beantwortet wurde, auch wenn sie inzwischen sitzt.
+  // Zurückgenommene Versuche zählen nicht. Reihenfolge: am längsten nicht geübte zuerst, dann nach Plan,
+  // damit mehrere kurze Runden nacheinander die ganze Sammlung abdecken.
+  // Raus: [{frage, thema, falsch: Anzahl, unsicher: Anzahl, zuletzt: ISO-Zeit des letzten Versuchs}]
+  function fehlerSammlung(daten, f) {
+    const aus = [];
+    planListe(daten).forEach((p, pos) => {
+      for (const q of p.thema.fragen) {
+        if (q.typ === 'fragment') continue;
+        const vs = gueltige(f.versuche[q.id]).filter(v => ergebnis(q, v));
+        const zahl = { falsch: 0, unsicher: 0 };
+        for (const v of vs) { const e = ergebnis(q, v); if (e in zahl) zahl[e] += 1; }
+        if (zahl.falsch + zahl.unsicher) aus.push({ frage: q, thema: p.thema, ...zahl, zuletzt: vs[vs.length - 1].zeit, pos });
+      }
+    });
+    return aus.sort((a, b) => (Date.parse(a.zuletzt) - Date.parse(b.zuletzt)) || (a.pos - b.pos));
+  }
+
   // Nächster Termin, an dem wieder etwas fällig wird (für die Startseite).
   function naechsteFaelligkeit(daten, f, heute) {
     let min = null;
@@ -491,7 +509,7 @@ const Kern = (() => {
     LEER, normal, schluessel, zustandAus, erschliessen, lernskriptLesen, lernskriptSchreiben, ergebnis,
     tagVon, plusTage, tageZwischen, gueltige, letzterVersuch, wiederholung, leererFortschritt, vervollstaendigen,
     zusammenfuehren, abgleichen, versuchBuchen, versuchAendern, versuchZuruecknehmen, schrittSetzen, schrittWert,
-    planListe, themaStand, naechstesThema, tempo, faellige, naechsteFaelligkeit, mischen,
+    planListe, themaStand, naechstesThema, tempo, faellige, naechsteFaelligkeit, mischen, fehlerSammlung,
   };
 })();
 if (typeof module !== 'undefined') module.exports = Kern;

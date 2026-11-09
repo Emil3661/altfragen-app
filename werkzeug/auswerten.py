@@ -93,6 +93,8 @@ def auswertung(daten, fortschritt, md_text=None, md_zeit=None, heute=None, jetzt
         'wartet': len(wartet),
         'naechster': min(wartet) if wartet else None,
         'tempo': kern.tempo(daten, f, heute),
+        # Fehlersammlung wie in der App: je falsch oder unsicher, als Thema.Nr
+        'sammlung': [marke[x['frage']['id']] for x in kern.fehler_sammlung(daten, f)],
         'fehler': lesefehler,
         'abbruch': abbruch,
     }
@@ -118,6 +120,7 @@ def bericht(a, daten):
         z.append('')
     z.append(f'Heute fällig: {len(a["faellig"])}' + (f' · {", ".join(a["faellig"])}' if a['faellig'] else ''))
     z.append(f'Wartet: {a["wartet"]}' + (f' · nächster Termin {datum(a["naechster"])}' if a['naechster'] else ''))
+    z.append(f'Fehlersammlung, je falsch oder unsicher: {len(a["sammlung"])}')
     if a['themen']:
         # Schritte je bearbeitetem Thema; None = noch nicht abgehakt
         anzeige = {'ja': 'ja', 'keins': 'keins', None: 'offen'}

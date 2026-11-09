@@ -87,5 +87,61 @@ class Probeklausur(unittest.TestCase):
         self.assertIn('2 passende Fragen', abw[0])
 
 
+
+class Erklaerungen(unittest.TestCase):
+    """Ausgebaute Erklärungen: Zuordnung über den Optionstext, unbekannte Optionen und kaputte Zeilen sind Fehler."""
+
+    def lesen(self, inhalt):
+        # Inhalt in eine temporäre Datei schreiben und einlesen; Raus: (Erklärungen, Fehlerliste)
+        import tempfile
+        with tempfile.TemporaryDirectory() as ordner:
+            pfad = os.path.join(ordner, '01.txt')
+            with open(pfad, 'w', encoding='utf-8') as d:
+                d.write(inhalt)
+            fehler = []
+            return bauen.erklaerungen_lesen(pfad, fehler), fehler
+
+    def test_fehlende_datei_ist_leer(self):
+        self.assertEqual(bauen.erklaerungen_lesen(os.path.join(HIER, 'gibt-es-nicht.txt'), []), {})
+
+    def test_einsetzen_ueber_text_nicht_position(self):
+        erkl, fehler = self.lesen('@@Q Q01\nW: *Apfel* || rund und Obst\nW: Banane || krumm\nEXTRA: Fakt eins\n')
+        self.assertEqual(fehler, [])
+        frage = json.loads(json.dumps(DATEN['themen'][0]['fragen'][0]))
+        bauen.erklaerungen_einsetzen(frage, erkl['Q01'], '1.Q01', fehler)
+        w = {o['t']: o['w'] for o in frage['optionen']}
+        self.assertEqual(w['Apfel'], 'rund und Obst')
+        self.assertEqual(w['Banane'], 'krumm')
+        self.assertEqual(frage['neu'], ['Fakt eins'])
+        self.assertEqual(fehler, [])
+
+    def test_unbekannte_option_ist_fehler(self):
+        erkl, fehler = self.lesen('@@Q Q01\nW: Mango || gibt es nicht\n')
+        frage = json.loads(json.dumps(DATEN['themen'][0]['fragen'][0]))
+        bauen.erklaerungen_einsetzen(frage, erkl['Q01'], '1.Q01', fehler)
+        self.assertEqual(len(fehler), 1)
+        self.assertIn('Mango', fehler[0])
+
+    def test_ohne_extra_bleibt_neu(self):
+        erkl, _ = self.lesen('@@Q Q01\nW: Apfel || rund\n')
+        frage = dict(json.loads(json.dumps(DATEN['themen'][0]['fragen'][0])), neu=['alt'])
+        bauen.erklaerungen_einsetzen(frage, erkl['Q01'], '1.Q01', [])
+        self.assertEqual(frage['neu'], ['alt'])
+
+    def test_leere_und_doppelte_zeilen_sind_fehler(self):
+        _, fehler = self.lesen('@@Q Q01' + chr(10) + 'W: Apfel ||' + chr(10) + 'EXTRA:' + chr(10)
+                               + 'W: Banane || krumm' + chr(10) + 'W: *Banane* || doppelt' + chr(10))
+        self.assertEqual(len(fehler), 3)
+
+    def test_byte_order_mark_wird_gelesen(self):
+        erkl, fehler = self.lesen(chr(0xFEFF) + '@@Q Q01' + chr(10) + 'W: Apfel || rund' + chr(10))
+        self.assertEqual(fehler, [])
+        self.assertIn('Q01', erkl)
+
+    def test_kaputte_zeilen_sind_fehler(self):
+        _, fehler = self.lesen('W: vor der ersten Frage || x\n@@Q Q01\nW: ohne Trenner\nQUATSCH\n')
+        self.assertEqual(len(fehler), 3)
+
+
 if __name__ == '__main__':
     unittest.main()

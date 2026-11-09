@@ -512,3 +512,27 @@ def tempo(daten, f, heute):
                 if q['typ'] != 'fragment' and not any(ergebnis(q, v) for v in gueltige(f['versuche'].get(q['id']))))
     return {'ziel': ziel, 'tage': tage, 'offen': offen, 'pro_tag': math.ceil(offen / tage),
             'bis_klausur': tage_zwischen(heute, daten['klausur'])}
+
+
+def fehler_sammlung(daten, f):
+    """Jede Frage, die je falsch oder unsicher beantwortet wurde, auch wenn sie inzwischen sitzt.
+
+    Zurückgenommene Versuche zählen nicht. Reihenfolge: am längsten nicht geübte zuerst, bei gleicher Zeit nach Plan.
+    Raus: [{'frage', 'thema', 'falsch': Anzahl, 'unsicher': Anzahl, 'zuletzt': Zeit des letzten Versuchs}]
+    """
+    aus = []
+    for pos, (t, _) in enumerate(plan_liste(daten)):
+        for q in t['fragen']:
+            if q['typ'] == 'fragment':
+                continue
+            # Nur Versuche mit Ergebnis; ergebnis() ist None bei leerer Wahl
+            vs = [v for v in gueltige(f['versuche'].get(q['id'])) if ergebnis(q, v)]
+            zahl = {'falsch': 0, 'unsicher': 0}
+            for v in vs:
+                e = ergebnis(q, v)
+                if e in zahl:
+                    zahl[e] += 1
+            if zahl['falsch'] + zahl['unsicher']:
+                aus.append({'frage': q, 'thema': t, **zahl, 'zuletzt': vs[-1]['zeit'], 'pos': pos})
+    # Sortierschlüssel: Zeitpunkt des letzten Versuchs in Millisekunden, dann Position im Plan
+    return sorted(aus, key=lambda x: (_ms(x['zuletzt']), x['pos']))

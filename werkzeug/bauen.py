@@ -1,6 +1,7 @@
 """Baut die Fragendatei der App aus den Quellen des Lernskripts und prüft sie gegen das echte Lernskript.
 
 Rein: <QUELLE>/src/<fach>/index.json, out/<fach>/NN.txt, ergaenzt/<fach>/NN.txt (über fmt.lade),
+      erklaert/<fach>/NN.txt (ausgebaute Erklärungen, optional),
       das Lernskript und die beiden Probeklausuren des Fachs (nur gelesen).
 Raus: build/fragen-<fach>.json nach FORMAT.md. Weicht das Gebaute vom Lernskript oder einer Probeklausur ab,
       wird die Liste der Abweichungen ausgegeben, nichts geschrieben und mit Code 1 beendet.
@@ -124,6 +125,62 @@ def frage_bauen(fach, t, n, schl, nr, abschnitt, q):
             'neu': list(q['neu']), 'hinweis': list(q['hinweis']), 'ids': ids}
 
 
+def erklaerungen_lesen(pfad, fehler):
+    """Ausgebaute Erklärungen eines Themas lesen, falls die Datei existiert.
+
+    Format: `@@Q Qnn` beginnt eine Frage, `W: <Optionstext> || <Begründung>` ersetzt die Begründung der Option,
+    `EXTRA: <Fakt>` ersetzt die Zusatzfakten (Feld neu). Raus: {Qnn: {'w': {normal(Option): Begründung}, 'extra': [...]}}.
+    Leere Begründung, leeres EXTRA und zwei Begründungen zur selben Option sind Fehler, damit nichts still verloren geht.
+    """
+    if not os.path.exists(pfad):
+        return {}
+    aus, akt = {}, None
+    # utf-8-sig liest Dateien mit und ohne Byte-Order-Mark am Anfang
+    with open(pfad, encoding='utf-8-sig') as d:
+        for nr, zeile in enumerate(d, 1):
+            zeile = zeile.rstrip('\r\n')
+            if not zeile.strip():
+                continue
+            m = re.match(r'^@@Q (Q\d+)\s*$', zeile)
+            if m:
+                akt = aus.setdefault(m.group(1), {'w': {}, 'extra': []})
+                continue
+            m = re.match(r'^(W|EXTRA):\s?(.*)$', zeile)
+            if akt is None or not m:
+                fehler.append(f'{pfad} Zeile {nr}: nicht lesbar')
+                continue
+            if m.group(1) == 'EXTRA':
+                if not m.group(2).strip():
+                    fehler.append(f'{pfad} Zeile {nr}: EXTRA ohne Text')
+                    continue
+                akt['extra'].append(m.group(2).strip())
+            else:
+                # Option und Begründung durch || getrennt; partition teilt am ersten Vorkommen
+                opt, trenner, grund = m.group(2).partition('||')
+                if not trenner or not grund.strip():
+                    fehler.append(f'{pfad} Zeile {nr}: W ohne Begründung nach ||')
+                    continue
+                if kern.normal(opt) in akt['w']:
+                    fehler.append(f'{pfad} Zeile {nr}: zweite Begründung zu {kern.normal(opt)!r}')
+                    continue
+                akt['w'][kern.normal(opt)] = grund.strip()
+    return aus
+
+
+def erklaerungen_einsetzen(frage, erkl, ort, fehler):
+    """Begründungen über den Optionstext zuordnen, nie über die Position. Unbekannte Option = Fehler."""
+    bekannt = {kern.normal(o['t']) for o in frage['optionen']}
+    for opt in erkl['w']:
+        if opt not in bekannt:
+            fehler.append(f'{ort}: Erklärung zu unbekannter Option {opt!r}')
+    for o in frage['optionen']:
+        grund = erkl['w'].get(kern.normal(o['t']))
+        if grund is not None:
+            o['w'] = grund
+    if erkl['extra']:
+        frage['neu'] = list(erkl['extra'])
+
+
 def bauen(fach, fehler):
     """Fragendaten ohne Probeklausuren; Fehler der Quelle landen in 'fehler'.
 
@@ -157,6 +214,8 @@ def bauen(fach, fehler):
         if fehlend:
             fehler.append(f'Thema {t["rank"]}: Fragen fehlen in out: {fehlend}')
             continue
+        # Ausgebaute Erklärungen (erklaert/<fach>/NN.txt), Schlüssel Qnn wie in out
+        erkl = erklaerungen_lesen(f'{QUELLE}/erklaert/{fach}/{t["rank"]:02d}.txt', fehler)
         fragen, abschnitte, akt, nr = [], [], None, 0
         for n, schl in enumerate(schluessel):
             q = o['qs'][schl]
@@ -171,8 +230,15 @@ def bauen(fach, fehler):
                     abschnitte.append({'titel': sub, 'text': gruppen_absetzen(o['subs'][sub]) if sub in o['subs'] else ''})
             nr += 1
             frage = frage_bauen(fach, t, n, schl, nr, akt, q)
+            if schl in erkl:
+                erklaerungen_einsetzen(frage, erkl[schl], frage['id'], fehler)
             fragen.append(frage)
             roh[frage['id']] = q
+        # Erklärungen zu Fragen, die nicht gebaut wurden (unbekannt oder leeres Bruchstück), wären still verloren
+        gebaut = {q['id'].split('.', 1)[1] for q in fragen}
+        for s in erkl:
+            if s not in gebaut:
+                fehler.append(f'Thema {t["rank"]}: Erklärung zu {s}, die Frage gibt es nicht oder sie ist leer')
         themen.append({
             'rang': t['rank'], 'titel': titel, 'stufe': stufe,
             'block': block_nr[t['block']] if t['block'] is not None else None,

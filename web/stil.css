@@ -45,16 +45,11 @@ p { margin: 0; }
 .option.gewaehlt { background: var(--wahl); border-color: var(--akzent); }
 .option.richtig { background: var(--gut-grund); border-color: var(--gut); color: var(--text); opacity: 1; }
 .option.daneben { background: var(--schlecht-grund); border-color: var(--schlecht); color: var(--text); opacity: 1; }
-.option.blass { opacity: .6; }
+.option.blass .opt-text { opacity: .6; }
 .option:disabled { cursor: default; }
 .urteil { font-weight: 700; font-size: 19px; }
 .urteil.gut { color: var(--gut); }
 .urteil.schlecht { color: var(--schlecht); }
-.loesung-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.loesung-liste li { display: flex; gap: 8px; font-size: 15px; overflow-wrap: anywhere; }
-.loesung-liste .zeichen { flex: none; width: 1.2em; font-weight: 700; }
-.loesung-liste li.zu .zeichen { color: var(--gut); }
-.loesung-liste li.nicht .zeichen { color: var(--schlecht); }
 .haken { text-align: left; min-height: 44px; font-size: 15px; }
 .haken.an { border-color: var(--akzent); background: var(--wahl); }
 .hinweis { background: var(--warn); color: var(--warn-text); padding: 9px 11px; border-radius: 10px; font-size: 15px; }
@@ -76,3 +71,12 @@ p { margin: 0; }
 .balken-wert { display: block; height: 100%; background: var(--akzent); }
 .feld { display: flex; flex-direction: column; gap: 5px; font-size: 15px; }
 .eingabe { width: 100%; font: inherit; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--linie); background: var(--flaeche); color: var(--text); }
+.opt-text { display: block; }
+.grund { display: block; font-size: 14px; color: var(--leise); margin-top: 5px; line-height: 1.4; }
+.grund .zeichen { font-weight: 700; }
+.grund .zeichen.zu { color: var(--gut); }
+.grund .zeichen.nicht { color: var(--schlecht); }
+.extra { font-size: 15px; }
+.extra ul { margin: 4px 0 0; padding-left: 20px; }
+.extra li { margin: 3px 0; }
+.status { min-height: 1.4em; }

@@ -1,0 +1,53 @@
+[
+ {
+  "name": "falsch, danach richtig, bleibt in der Sammlung",
+  "versuche": {
+   "1.Q01": [
+    {"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]},
+    {"zeit": "2026-11-10T10:00:00Z", "wahl": ["Apfel"]}
+   ]
+  },
+  "erwartet": [{"frage": "1.Q01", "falsch": 1, "unsicher": 0}]
+ },
+ {
+  "name": "nur richtig, nicht in der Sammlung",
+  "versuche": {
+   "1.Q01": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Apfel"]}]
+  },
+  "erwartet": []
+ },
+ {
+  "name": "zurückgenommener Fehlversuch zählt nicht",
+  "versuche": {
+   "1.Q01": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"], "geloescht": "2026-11-08T10:01:00Z"}]
+  },
+  "erwartet": []
+ },
+ {
+  "name": "unsicher und offene Frage falsch, am längsten nicht geübte zuerst",
+  "versuche": {
+   "1.Q01": [{"zeit": "2026-11-09T10:00:00Z", "wahl": ["Apfel"], "unsicher": true}],
+   "1.Q03": [{"zeit": "2026-11-08T10:00:00Z", "wahl": [], "falsch": true}],
+   "2.Q01": [
+    {"zeit": "2026-11-07T10:00:00Z", "wahl": ["Erbse"]},
+    {"zeit": "2026-11-07T11:00:00Z", "wahl": ["Erbse", "Gurke"], "unsicher": true}
+   ]
+  },
+  "erwartet": [
+   {"frage": "2.Q01", "falsch": 1, "unsicher": 1},
+   {"frage": "1.Q03", "falsch": 1, "unsicher": 0},
+   {"frage": "1.Q01", "falsch": 0, "unsicher": 1}
+  ]
+ },
+ {
+  "name": "gleiche Zeit, dann nach Plan",
+  "versuche": {
+   "2.Q01": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Tomate"]}],
+   "1.Q02": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Kiwi"]}]
+  },
+  "erwartet": [
+   {"frage": "1.Q02", "falsch": 1, "unsicher": 0},
+   {"frage": "2.Q01", "falsch": 1, "unsicher": 0}
+  ]
+ }
+]

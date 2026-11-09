@@ -77,6 +77,22 @@ Alle im Ordner `Altfragen-App`, angelegt vom Werkzeug `veroeffentlichen.py` übe
 - `aussagen` nur bei Kombinationsfragen, sonst `null`
 - `abschnitt` = Titel aus `abschnitte`, unter dem die Frage im Lernskript steht, sonst `null`
 - Texte sind Markdown-Teilmenge: `**fett**`, `*kursiv*`, Listen mit `- ` (Einrückung zwei Leerzeichen je Ebene), nummerierte Listen, Tabellen mit `|`. Kein HTML
+- `optionen[].w` = Begründung, die App zeigt sie nach dem Lösen direkt unter der Option, mit ✓ trifft zu / ✗ trifft nicht zu. `neu` = Extra-Fakten
+
+### Ausgebaute Erklärungen (Quelle)
+
+`<QUELLE>/erklaert/<fach>/NN.txt` je Thema, optional. `bauen.py` setzt sie über die Lernskript-Begründungen:
+
+```
+@@Q Q15
+W: <Optionstext> || <Begründung>
+EXTRA: <Fakt>
+```
+
+- `W` ersetzt `w` der Option, zugeordnet über `normal(Optionstext)`, nie über die Position. Unbekannte Option oder Frage = Fehler, der Bau bricht ab
+- `EXTRA` ersetzt `neu` der Frage, wenn mindestens eine Zeile da ist
+- Stichworte mit echtem Grund, keine Wiederholung des Optionstexts. Das Zeichen ✓/✗ setzt die App, im Text steht kein „trifft zu“
+- Das Lernskript behält seine Begründungen. Der Abgleich prüft nur Stamm, Optionen und Lösung
 
 ## Fortschritt
 
@@ -149,6 +165,8 @@ Aus den nicht gelöschten Versuchen einer Frage, nach `zeit` aufsteigend. Tage =
 - Fälligkeit höchstens zwei Tage vor der Klausur, mindestens einen Tag nach dem Versuch
 - Eine Frage gilt als beantwortet, sobald sie einen Versuch mit Ergebnis hat (für Plan, Tempo, „Weiter mit Frage“)
 - **Status**: `neu` (kein Versuch) · `sicher` (nichts fällig) · `faellig` (Fälligkeit ≤ heute) · `wartet`
+
+**Fehlersammlung**: jede Frage außer Bruchstücken mit mindestens einem nicht gelöschten Versuch, dessen Ergebnis `falsch` oder `unsicher` ist. Bleibt, auch wenn spätere Versuche richtig sind. Je Frage die Zahl der falschen und unsicheren Versuche und `zuletzt` = Zeit des letzten Versuchs mit Ergebnis. Reihenfolge: `zuletzt` aufsteigend (am längsten nicht geübte zuerst), bei Gleichstand Plan-Reihenfolge
 
 ## Abgleich App ↔ Lernskript
 

@@ -2,7 +2,7 @@
 // Nur die eigenen Dateien der Seite. Anfragen an Google und Drive laufen nie durch diesen Speicher,
 // Fragen und Lernstand liegen in IndexedDB.
 const PRAEFIX = 'altfragen-app-';
-const ABLAGE = PRAEFIX + '2';
+const ABLAGE = PRAEFIX + '3';
 const SCHALE = ['./', 'index.html', 'stil.css', 'konfig.js', 'kern.js', 'markdown.js', 'drive.js', 'app.js', 'manifest.webmanifest', 'icon.png'];
 // So lange wartet der Start auf das Netz, dann nimmt er die gespeicherte Fassung
 const WARTEN_MS = 3000;
