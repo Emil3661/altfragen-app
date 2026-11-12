@@ -75,6 +75,7 @@ Alle im Ordner `Altfragen-App`, angelegt vom Werkzeug `veroeffentlichen.py` übe
 - `optionen` in der Reihenfolge des Lernskripts. `richtig` = anzukreuzen (bei negativ gestellten Fragen die falsche Aussage). `erg` = nicht überliefert, ergänzt. `fest` = Sammeloption („alle genannten“), bleibt beim Neumischen am Ende. Leer bei `offen` und `fragment`
 - `loesung` nur bei `offen` und `fragment`, sonst `null`
 - `aussagen` nur bei Kombinationsfragen, sonst `null`
+- `abschnitte[].text` leer = Unterthema ohne eigene Notiz, gliedert im Lernskript nur die Fragen. Die App zeigt im Kern nur Unterthemen mit Text als Klappfeld
 - `abschnitt` = Titel aus `abschnitte`, unter dem die Frage im Lernskript steht, sonst `null`
 - Texte sind Markdown-Teilmenge: `**fett**`, `*kursiv*`, Listen mit `- ` (Einrückung zwei Leerzeichen je Ebene), nummerierte Listen, Tabellen mit `|`. Kein HTML
 - `optionen[].w` = Begründung, die App zeigt sie nach dem Lösen direkt unter der Option, mit ✓ trifft zu / ✗ trifft nicht zu. `neu` = Extra-Fakten

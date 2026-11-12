@@ -500,7 +500,10 @@
     const kern = el('section', { class: 'karte' }, el('h3', { text: '2 · Kern' }), md(t.kern));
     if (t.falle) kern.append(el('p', {}, el('strong', { text: 'Falle: ' }), mdZeile(t.falle)));
     if (t.tabellen) kern.append(md(t.tabellen));
-    for (const a of t.abschnitte || []) kern.append(el('details', { class: 'mehr' }, el('summary', { text: a.titel }), md(a.text)));
+    // Nur Unterthemen mit eigenem Text: Ein Titel ohne Text gliedert im Lernskript nur die Fragen
+    // und ergäbe ein leeres Klappfeld. /\S/ = mindestens ein Zeichen, das kein Leerraum ist
+    const mitText = (t.abschnitte || []).filter(a => /\S/.test(a.text || ''));
+    for (const a of mitText) kern.append(el('details', { class: 'mehr' }, el('summary', { text: a.titel }), md(a.text)));
     if (t.gefragt && t.gefragt.length) kern.append(el('details', { class: 'mehr' }, el('summary', { text: 'So wurde gefragt' }), md(t.gefragt.map(g => (/^\s*[-*] /.test(g) ? g : '- ' + g)).join('\n'))));
     kern.append(st.kern
       ? el('div', { class: 'leiste' }, el('p', { class: 'gruen', text: 'Gelesen' }), knopf('Zurücksetzen', () => setze('kern', null), 'leise'))
