@@ -1,0 +1,95 @@
+[
+ {
+  "name": "falsch, danach richtig, bleibt in Falsch",
+  "versuche": {
+   "1.Q01": [
+    {"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]},
+    {"zeit": "2026-11-10T10:00:00Z", "wahl": ["Apfel"]}
+   ]
+  },
+  "erwartet": {"falsch": [{"frage": "1.Q01", "falsch": 1}], "markiert": []}
+ },
+ {
+  "name": "nur richtig, in keiner Sammlung",
+  "versuche": {
+   "1.Q01": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Apfel"]}]
+  },
+  "erwartet": {"falsch": [], "markiert": []}
+ },
+ {
+  "name": "zurückgenommener Fehlversuch zählt nicht",
+  "versuche": {
+   "1.Q01": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"], "geloescht": "2026-11-08T10:01:00Z"}]
+  },
+  "erwartet": {"falsch": [], "markiert": []}
+ },
+ {
+  "name": "zuletzt falsche zuerst, darin und danach am längsten nicht geübte",
+  "versuche": {
+   "1.Q01": [
+    {"zeit": "2026-11-07T10:00:00Z", "wahl": ["Banane"]},
+    {"zeit": "2026-11-09T10:00:00Z", "wahl": ["Apfel"]}
+   ],
+   "1.Q02": [
+    {"zeit": "2026-11-05T10:00:00Z", "wahl": ["Kiwi"]},
+    {"zeit": "2026-11-06T10:00:00Z", "wahl": ["Gurke"]}
+   ],
+   "1.Q03": [{"zeit": "2026-11-08T10:00:00Z", "wahl": [], "falsch": true}],
+   "2.Q01": [
+    {"zeit": "2026-11-06T10:00:00Z", "wahl": ["Erbse"]},
+    {"zeit": "2026-11-10T10:00:00Z", "wahl": ["Tomate"]}
+   ]
+  },
+  "erwartet": {
+   "falsch": [
+    {"frage": "1.Q03", "falsch": 1},
+    {"frage": "2.Q01", "falsch": 2},
+    {"frage": "1.Q02", "falsch": 1},
+    {"frage": "1.Q01", "falsch": 1}
+   ],
+   "markiert": []
+  }
+ },
+ {
+  "name": "gleiche Zeit, dann nach Plan",
+  "versuche": {
+   "2.Q01": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Tomate"]}],
+   "1.Q02": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Kiwi"]}]
+  },
+  "erwartet": {"falsch": [{"frage": "1.Q02", "falsch": 1}, {"frage": "2.Q01", "falsch": 1}], "markiert": []}
+ },
+ {
+  "name": "Markiert: genau die Fragen mit Stern, auch unbeantwortete, nie geübte zuerst",
+  "versuche": {
+   "1.Q01": [{"zeit": "2026-11-09T10:00:00Z", "wahl": ["Apfel"]}],
+   "1.Q02": [{"zeit": "2026-11-07T10:00:00Z", "wahl": ["Gurke"]}],
+   "2.Q01": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Erbse", "Gurke"]}]
+  },
+  "sterne": {
+   "1.Q01": {"wert": true, "zeit": "2026-11-09T10:01:00Z"},
+   "1.Q02": {"wert": false, "zeit": "2026-11-09T10:02:00Z"},
+   "2.Q01": {"wert": true, "zeit": "2026-11-08T10:01:00Z"},
+   "2.Q03": {"wert": true, "zeit": "2026-11-09T10:03:00Z"}
+  },
+  "erwartet": {"falsch": [], "markiert": ["2.Q03", "2.Q01", "1.Q01"]}
+ },
+ {
+  "name": "eine Frage kann in beiden stehen",
+  "versuche": {
+   "1.Q01": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Banane"]}]
+  },
+  "sterne": {"1.Q01": {"wert": true, "zeit": "2026-11-08T10:01:00Z"}},
+  "erwartet": {"falsch": [{"frage": "1.Q01", "falsch": 1}], "markiert": ["1.Q01"]}
+ },
+ {
+  "name": "altes unsicher wird zum Stern, außer zurückgenommen oder schon umgeschaltet",
+  "versuche": {
+   "1.Q01": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Apfel"], "unsicher": true}],
+   "1.Q02": [{"zeit": "2026-11-08T10:00:00Z", "wahl": ["Gurke"], "unsicher": true, "geloescht": "2026-11-08T10:01:00Z"}],
+   "1.Q03": [{"zeit": "2026-11-08T10:00:00Z", "wahl": [], "unsicher": true}],
+   "2.Q01": [{"zeit": "2026-11-07T10:00:00Z", "wahl": ["Erbse"], "unsicher": true}]
+  },
+  "sterne": {"1.Q03": {"wert": false, "zeit": "2026-11-09T10:00:00Z"}},
+  "erwartet": {"falsch": [{"frage": "2.Q01", "falsch": 1}], "markiert": ["2.Q01", "1.Q01"]}
+ }
+]

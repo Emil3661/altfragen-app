@@ -146,7 +146,7 @@ def fragen_veroeffentlichen(faecher: list[str], erzwingen: bool = False) -> None
             anlegen(f"fragen-{fach}.json", inhalt, "application/json", [ordner], {"altfragenApp": "fragen", "fach": fach})
             print(f"{fach}: Fragen angelegt ({len(inhalt) // 1024} KB)")
         if not finden("fortschritt", fach):
-            leer = {"format": 1, "fach": fach, "versuche": {}, "schritte": {},
+            leer = {"format": 1, "fach": fach, "versuche": {}, "schritte": {}, "sterne": {},
                     "md": {"zeit": None, "basis": {}, "ueberschrieben": {}}}
             anlegen(f"fortschritt-{fach}.json", json.dumps(leer).encode("utf-8"), "application/json", [ordner],
                     {"altfragenApp": "fortschritt", "fach": fach})

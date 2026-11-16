@@ -38,19 +38,21 @@ for (const fall of lade('wiederholung.json')) {
   test(`wiederholung: ${fall.name}`, () => {
     const q = ix.fragen.get(fall.frage).frage;
     const versuche = fall.versuche.map((v, i) => ({ id: 'v' + i, unsicher: false, falsch: false, geloescht: null, ...v }));
-    const w = K.wiederholung(q, versuche, fall.heute, daten.klausur);
+    const w = K.wiederholung(q, versuche, fall.heute, daten.klausur, fall.stern ? { wert: true, zeit: fall.stern } : null);
     assert.strictEqual(w.status, fall.status);
     assert.strictEqual(w.faellig, fall.faellig);
   });
 }
 
-// ---------- Vektoren: Fehlersammlung ----------
-for (const fall of lade('fehler.json')) {
-  test(`fehlerSammlung: ${fall.name}`, () => {
+// ---------- Vektoren: Sammlungen Falsch und Markiert ----------
+// Der Fortschritt läuft vorher durch vervollstaendigen, wie in der App, damit das alte Merkmal unsicher zum Stern wird
+for (const fall of lade('sammlung.json')) {
+  test(`sammlung: ${fall.name}`, () => {
     const versuche = Object.fromEntries(Object.entries(fall.versuche).map(([id, vs]) =>
       [id, vs.map((v, i) => ({ id: `${id}:${i}`, unsicher: false, falsch: false, geloescht: null, ...v }))]));
-    const r = K.fehlerSammlung(daten, { versuche });
-    assert.deepStrictEqual(r.map(x => ({ frage: x.frage.id, falsch: x.falsch, unsicher: x.unsicher })), fall.erwartet);
+    const f = K.vervollstaendigen({ versuche, sterne: fall.sterne || {} }, 'test');
+    assert.deepStrictEqual(K.falschSammlung(daten, f).map(x => ({ frage: x.frage.id, falsch: x.falsch })), fall.erwartet.falsch);
+    assert.deepStrictEqual(K.markiertSammlung(daten, f).map(x => x.frage.id), fall.erwartet.markiert);
   });
 }
 
@@ -69,6 +71,9 @@ for (const fall of lade('abgleich.json')) {
     assert.deepStrictEqual([...r.geaendert].sort(), [...e.geaendert].sort());
     assert.deepStrictEqual(r.fortschritt.md.basis, e.basis);
     assert.deepStrictEqual(r.fortschritt.md.ueberschrieben, e.ueberschrieben);
+    // Sterne: alle Fragen, deren Stern nach dem Abgleich an ist
+    const an = [...ix.fragen.keys()].filter(id => K.sternAn(r.fortschritt, id)).sort();
+    assert.deepStrictEqual(an, e.sterne, 'Sterne');
     if (!e.geaendert.length) assert.strictEqual(r.mdNeu, null);
     const neu = r.mdNeu === null ? text : r.mdNeu;
     for (const [zeile, anzahl] of Object.entries(e.zeilen || {})) {
@@ -170,4 +175,131 @@ test('Docs-Escapes zählen als dieselbe Option', () => {
   assert.strictEqual(K.normal('Birne 3\\. Klasse \\= gut  '), 'Birne 3. Klasse = gut');
   assert.strictEqual(K.normal('*unsicher*'), 'unsicher');
   assert.strictEqual(K.normal('**_falsch_**'), 'falsch');
+});
+
+// ---------- Stern ----------
+const appVersuch = (id, zeit, wahl, merkmale = {}) => ({ id, zeit, wahl, unsicher: false, falsch: false, quelle: 'app', geaendert: zeit, geloescht: null, ...merkmale });
+const stern = (wert, zeit) => ({ wert, zeit });
+
+test('Stern: altes Merkmal unsicher wird übernommen, zurückgenommene und umgeschaltete nicht', () => {
+  const f = K.vervollstaendigen({ versuche: {
+    '1.Q01': [appVersuch('a', '2026-11-08T10:00:00Z', ['Apfel'], { unsicher: true }), appVersuch('b', '2026-11-09T10:00:00Z', ['Apfel'], { unsicher: true }), appVersuch('c', '2026-11-10T10:00:00Z', ['Apfel'])],
+    '1.Q02': [appVersuch('d', '2026-11-08T10:00:00Z', ['Gurke'], { unsicher: true, geloescht: '2026-11-08T11:00:00Z' })],
+    '1.Q03': [appVersuch('e', '2026-11-08T10:00:00Z', [], { unsicher: true })],
+    '2.Q01': [appVersuch('g', '2026-11-08T10:00:00Z', ['Erbse'], { unsicher: true })],
+  }, sterne: { '1.Q03': stern(false, '2026-11-09T10:00:00Z') } }, 'test');
+  assert.deepStrictEqual(f.sterne, { '1.Q01': { ...stern(true, '2026-11-09T10:00:00Z'), alt: true }, '1.Q03': stern(false, '2026-11-09T10:00:00Z'),
+    '2.Q01': { ...stern(true, '2026-11-08T10:00:00Z'), alt: true } });
+  assert.deepStrictEqual(K.vervollstaendigen(JSON.parse(JSON.stringify(f)), 'test'), f);
+});
+
+test('Stern: unbrauchbare Einträge werden verworfen', () => {
+  const f = K.vervollstaendigen({ sterne: { a: stern('ja', '2026-11-08T10:00:00Z'), b: stern(true, 'gestern'), c: null, d: stern(false, '2026-11-08T10:00:00Z') } }, 'test');
+  assert.deepStrictEqual(f.sterne, { d: stern(false, '2026-11-08T10:00:00Z') });
+  assert.deepStrictEqual(K.vervollstaendigen({ sterne: 'kaputt' }, 'test').sterne, {});
+});
+
+test('Stern: Zusammenführen nach Zeit, bei gleicher Zeit gewinnt der gesetzte, in beiden Richtungen gleich', () => {
+  const a = { sterne: { '1.Q01': stern(true, '2026-11-08T10:00:00Z'), '1.Q02': stern(false, '2026-11-08T12:00:00Z'), '1.Q03': stern(false, '2026-11-08T10:00:00Z') } };
+  const b = { sterne: { '1.Q01': stern(false, '2026-11-08T11:00:00Z'), '1.Q02': stern(true, '2026-11-08T11:00:00Z'), '1.Q03': stern(true, '2026-11-08T10:00:00Z'), '2.Q01': stern(true, '2026-11-08T09:00:00Z') } };
+  for (const g of [K.zusammenfuehren(a, b), K.zusammenfuehren(b, a)]) {
+    assert.deepStrictEqual(Object.fromEntries(Object.entries(g.sterne).map(([id, s]) => [id, s.wert])), { '1.Q01': false, '1.Q02': false, '1.Q03': true, '2.Q01': true });
+  }
+});
+
+test('Stern: ein Stand ohne Sterne (ältere Fassung der App) löscht keinen', () => {
+  const v = appVersuch('a', '2026-11-08T10:00:00Z', ['Apfel']);
+  const mit = { versuche: { '1.Q01': [v] }, sterne: { '1.Q01': stern(true, '2026-11-08T10:01:00Z'), '1.Q02': stern(false, '2026-11-08T10:02:00Z') } };
+  const ohne = { versuche: { '1.Q01': [v] } };
+  for (const g of [K.zusammenfuehren(mit, ohne), K.zusammenfuehren(ohne, mit)]) assert.deepStrictEqual(g.sterne, mit.sterne);
+});
+
+test('Stern: ausgeschaltet bleibt aus, auch gegen einen Stand mit dem alten Merkmal', () => {
+  const alt = { versuche: { '1.Q01': [appVersuch('a', '2026-11-08T10:00:00Z', ['Apfel'], { unsicher: true })] } };
+  const a = K.vervollstaendigen(JSON.parse(JSON.stringify(alt)), 'test');
+  K.sternSetzen(a, '1.Q01', false, '2026-11-16T18:00:00Z');
+  for (const g of [K.zusammenfuehren(a, alt), K.zusammenfuehren(alt, a)]) assert.strictEqual(K.sternAn(g, '1.Q01'), false);
+});
+
+test('Stern: macht keine Frage beantwortet, zählt falsche Versuche ohne zurückgenommene', () => {
+  const f = K.leererFortschritt('test');
+  K.sternSetzen(f, '1.Q01', true, '2026-11-08T10:00:00Z');
+  assert.strictEqual(K.tempo(daten, f, '2026-11-09').offen, 4);
+  assert.strictEqual(K.wiederholung(ix.fragen.get('1.Q01').frage, [], '2026-11-09', daten.klausur, stern(true, '2026-11-08T10:00:00Z')).status, 'neu');
+  const vs = [appVersuch('a', '2026-11-08T10:00:00Z', ['Banane']), appVersuch('b', '2026-11-09T10:00:00Z', ['Apfel']),
+    appVersuch('c', '2026-11-10T10:00:00Z', ['Banane']), appVersuch('d', '2026-11-11T10:00:00Z', ['Banane'], { geloescht: '2026-11-11T10:01:00Z' })];
+  assert.strictEqual(K.falschZahl(ix.fragen.get('1.Q01').frage, vs), 2);
+});
+
+test('Stern: Versuche aus Docs tragen kein unsicher, zwei Geräte kommen zum selben Stern', () => {
+  const leer = K.leererFortschritt('test');
+  const a = K.abgleichen(leer, md, '2026-11-08T17:25:00.000Z', ix, '2026-11-08T21:00:00.000Z').fortschritt;
+  const b = K.abgleichen(leer, md, '2026-11-08T18:40:00.000Z', ix, '2026-11-08T22:00:00.000Z').fortschritt;
+  const g = K.zusammenfuehren(a, b);
+  assert.ok(Object.values(g.versuche).flat().every(v => !v.unsicher));
+  assert.deepStrictEqual(Object.fromEntries(Object.entries(g.versuche).map(([id, vs]) => [id, vs.map(v => v.id)])),
+    { '1.Q01': ['docs:1.Q01:Apfel#u0f0:0'], '1.Q03': ['docs:1.Q03:#u0f1:0'], '2.Q01': ['docs:2.Q01:Erbse|Gurke#u0f0:0'] });
+  assert.deepStrictEqual(Object.keys(g.sterne).filter(id => K.sternAn(g, id)), ['1.Q01']);
+});
+
+test('Stern: alte Basis mit unsicher am letzten Versuch und unveränderte .md ergeben nichts zu tun', () => {
+  const f = { versuche: { '1.Q01': [appVersuch('a', '2026-11-08T17:00:00Z', ['Apfel'], { unsicher: true })], '1.Q03': [appVersuch('b', '2026-11-08T17:00:00Z', [], { falsch: true })],
+    '2.Q01': [appVersuch('c', '2026-11-08T17:00:00Z', ['Erbse', 'Gurke'])] },
+  md: { zeit: '2026-11-08T17:30:00Z', basis: { '1.Q01': 'Apfel#u1f0', '1.Q03': '#u0f1', '2.Q01': 'Erbse|Gurke#u0f0' }, ueberschrieben: {} } };
+  const r = K.abgleichen(f, md, '2026-11-08T17:25:00.000Z', ix, '2026-11-08T21:00:00.000Z');
+  assert.deepStrictEqual(r.geaendert, []);
+  assert.strictEqual(r.mdNeu, null);
+  assert.ok(K.sternAn(r.fortschritt, '1.Q01'));
+});
+
+test('Stern: ein veralteter Stand hält einen übernommenen Stern nach dem Zusammenführen nicht fest', () => {
+  const q = ix.fragen.get('1.Q01').frage;
+  const x = appVersuch('x', '2026-11-01T10:00:00Z', ['Apfel']);
+  const y = appVersuch('y', '2026-11-08T10:00:00Z', ['Apfel'], { unsicher: true });
+  for (const drive of [{ ...y, unsicher: false, geaendert: '2026-11-08T12:00:00Z' }, { ...y, geloescht: '2026-11-08T12:00:00Z', geaendert: '2026-11-08T12:00:00Z' }]) {
+    const veraltet = K.vervollstaendigen({ versuche: { '1.Q01': [x, y] } }, 'test');
+    for (const [a, b] of [[veraltet, { versuche: { '1.Q01': [x, drive] } }], [{ versuche: { '1.Q01': [x, drive] } }, veraltet]]) {
+      const g = K.zusammenfuehren(a, b);
+      assert.strictEqual(K.sternAn(g, '1.Q01'), false);
+      assert.deepStrictEqual(K.wiederholung(q, g.versuche['1.Q01'], '2026-11-12', daten.klausur, K.sternVon(g, '1.Q01')), { status: 'sicher', faellig: null, letztes: 'richtig' });
+    }
+  }
+});
+
+test('Stern: übernommener Stern wirkt wie das alte Merkmal, auch bei gleicher Zeit und ohne Ergebnis', () => {
+  const q = ix.fragen.get('1.Q01').frage;
+  const faelle = [
+    [[appVersuch('a', '2026-11-08T10:00:00Z', ['Banane'], { unsicher: true }), appVersuch('b', '2026-11-08T10:00:00Z', ['Apfel'])], ['wartet', '2026-11-10']],
+    [[appVersuch('a', '2026-11-08T10:00:00Z', ['Apfel']), appVersuch('b', '2026-11-08T11:00:00Z', [], { unsicher: true })], ['sicher', null]],
+  ];
+  for (const [versuche, [status, faellig]] of faelle) {
+    const g = K.vervollstaendigen({ versuche: { '1.Q01': versuche } }, 'test');
+    const w = K.wiederholung(q, versuche, '2026-11-09', daten.klausur, K.sternVon(g, '1.Q01'));
+    assert.deepStrictEqual([w.status, w.faellig], [status, faellig]);
+  }
+});
+
+test('Stern: aus nimmt auch die Wirkung des alten Merkmals', () => {
+  const q = ix.fragen.get('1.Q01').frage;
+  let f = K.vervollstaendigen({ versuche: { '1.Q01': [appVersuch('a', '2026-11-08T10:00:00Z', ['Apfel'], { unsicher: true })] } }, 'test');
+  assert.strictEqual(K.wiederholung(q, f.versuche['1.Q01'], '2026-11-09', daten.klausur, K.sternVon(f, '1.Q01')).faellig, '2026-11-11');
+  K.sternSetzen(f, '1.Q01', false, '2026-11-09T08:00:00Z');
+  f = K.vervollstaendigen(f, 'test');
+  assert.strictEqual(K.wiederholung(q, f.versuche['1.Q01'], '2026-11-09', daten.klausur, K.sternVon(f, '1.Q01')).status, 'sicher');
+});
+
+test('Schutz: hält auch an, wenn nur noch Sterne da sind und die Antworten aus der .md flögen', () => {
+  const zeilen = ['## 1 · Obst'];
+  const big = { ...daten, themen: [{ ...daten.themen[0], fragen: [] }] };
+  for (let n = 1; n <= 6; n++) {
+    big.themen[0].fragen.push({ id: `1.Q${n}`, nr: n, typ: 'positiv', optionen: [{ t: 'Apfel', richtig: true }, { t: 'Banane', richtig: false }] });
+    zeilen.push(`**Frage ${n}**`, '- [x] Apfel', '- [ ] Banane', '- [x] *unsicher*');
+  }
+  const bix = K.erschliessen(big);
+  const ids = big.themen[0].fragen.map(q => q.id);
+  const f = { versuche: {}, sterne: Object.fromEntries(ids.map(id => [id, stern(true, '2026-11-08T19:00:00Z')])),
+    md: { zeit: '2026-11-08T20:00:00Z', basis: Object.fromEntries(ids.map(id => [id, 'Apfel#u1f0'])), ueberschrieben: {} } };
+  const r = K.abgleichen(f, zeilen.join('\n'), '2026-11-08T17:00:00Z', bix, '2026-11-08T21:00:00Z');
+  assert.match(r.abbruch, /6 Fragen/);
+  assert.strictEqual(r.mdNeu, null);
 });

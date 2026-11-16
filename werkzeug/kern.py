@@ -66,6 +66,11 @@ def _leerer_zustand():
     return {'wahl': [], 'unsicher': False, 'falsch': False}
 
 
+def teile(k):
+    """Schlüssel zerlegen in Optionen, unsicher und falsch. Die letzten fünf Zeichen haben die Form '#u0f0'."""
+    return {'wahl': k[:-5], 'unsicher': k[-3] == '1', 'falsch': k[-1] == '1'}
+
+
 # ---------- Fragendaten erschließen ----------
 
 def erschliessen(daten):
@@ -190,20 +195,20 @@ def lernskript_schreiben(text, orte, soll):
 # ---------- Ergebnis eines Versuchs ----------
 
 def ergebnis(frage, versuch):
-    """'richtig', 'unsicher', 'falsch' oder None, wenn der Versuch nichts aussagt (leere Wahl, Bruchstück)."""
+    """'richtig', 'falsch' oder None, wenn der Versuch nichts aussagt (leere Wahl, Bruchstück).
+
+    Das Merkmal unsicher älterer Versuche zählt hier nicht mehr, es ist beim Laden zum Stern geworden;
+    'unsicher' entsteht nur über den Stern (ergebnisse).
+    """
     if frage['typ'] == 'fragment':
         return None
     if frage['typ'] == 'offen' or not frage['optionen']:
-        if versuch.get('falsch'):
-            return 'falsch'
-        return 'unsicher' if versuch.get('unsicher') else 'richtig'
+        return 'falsch' if versuch.get('falsch') else 'richtig'
     wahl = {normal(t) for t in (versuch.get('wahl') or [])}
     if not wahl:
         return None
     soll = {normal(o['t']) for o in frage['optionen'] if o['richtig']}
-    if wahl != soll:
-        return 'falsch'
-    return 'unsicher' if versuch.get('unsicher') else 'richtig'
+    return 'richtig' if wahl == soll else 'falsch'
 
 
 # ---------- Zeit und Kalendertage in Berliner Zeit ----------
@@ -273,20 +278,58 @@ def letzter_versuch(f, qid):
     return vs[-1] if vs else None
 
 
+# ---------- Stern ----------
+
+def stern_an(f, qid):
+    """Hat die Frage einen Stern? Einträge {wert, zeit} in f['sterne']; wert False = ausgeschaltet."""
+    s = (f.get('sterne') or {}).get(qid)
+    return bool(s and s.get('wert'))
+
+
+def stern_setzen(f, qid, wert, jetzt):
+    f.setdefault('sterne', {})[qid] = {'wert': bool(wert), 'zeit': jetzt}
+
+
+def ergebnisse(frage, versuche, stern):
+    """Versuche mit Ergebnis nach Zeit als [(versuch, ergebnis)].
+
+    stern: Eintrag {wert, zeit, alt} oder None. Ein gesetzter Stern wirkt wie früher das Merkmal unsicher auf genau
+    eine Antwort: die letzte, die es beim Setzen gab (vor der ersten Antwort gesetzt: die erste). Ist sie richtig,
+    zählt sie als 'unsicher'; spätere richtige Antworten rücken die Leiter normal vor.
+    Ein aus dem alten Merkmal übernommener Stern (alt) wirkt genau wie früher: jede richtige Antwort mit unsicher.
+    """
+    vs = [(v, ergebnis(frage, v)) for v in gueltige(versuche)]
+    vs = [(v, e) for v, e in vs if e]
+    if not (stern and stern.get('wert') and vs):
+        return vs
+    if stern.get('alt'):
+        return [(v, 'unsicher' if v.get('unsicher') and e == 'richtig' else e) for v, e in vs]
+    t = _ms(stern.get('zeit'))
+    # Index der letzten Antwort bis zum Setzen des Sterns, sonst 0 (die erste)
+    i = max((n for n, (v, _) in enumerate(vs) if _ms(v['zeit']) <= t), default=0)
+    if vs[i][1] == 'richtig':
+        vs[i] = (vs[i][0], 'unsicher')
+    return vs
+
+
+def falsch_zahl(frage, versuche):
+    """Wie oft eine Frage falsch beantwortet wurde, zurückgenommene Versuche ausgenommen."""
+    return sum(1 for v in gueltige(versuche) if ergebnis(frage, v) == 'falsch')
+
+
 # ---------- Wiederholung ----------
 
 ABSTAND = {'falsch': 2, 'unsicher': 3}
 LEITER = [7, 21]
 
 
-def _wiederholung(frage, versuche, heute, klausur):
+def _wiederholung(frage, versuche, heute, klausur, stern):
     # Leiter über alle aussagekräftigen Versuche; liefert Status, Fälligkeit und das Ergebnis des letzten Versuchs
-    vs = [v for v in gueltige(versuche) if ergebnis(frage, v)]
+    vs = ergebnisse(frage, versuche, stern)
     if not vs:
         return 'neu', None, None
     leiter, stufe, faellig, e = False, 0, None, None
-    for v in vs:
-        e = ergebnis(frage, v)
+    for v, e in vs:
         tag = tag_von(v['zeit'])
         if e != 'richtig':
             leiter, stufe, faellig = True, 0, plus_tage(tag, ABSTAND[e])
@@ -310,22 +353,25 @@ def _wiederholung(frage, versuche, heute, klausur):
     return ('faellig' if heute >= faellig else 'wartet'), faellig, e
 
 
-def wiederholung(frage, versuche, heute, klausur):
-    """Raus: (status, faellig). Status neu, sicher, faellig oder wartet; faellig als 'JJJJ-MM-TT' oder None."""
-    status, faellig, _ = _wiederholung(frage, versuche, heute, klausur)
+def wiederholung(frage, versuche, heute, klausur, stern=None):
+    """Raus: (status, faellig). Status neu, sicher, faellig oder wartet; faellig als 'JJJJ-MM-TT' oder None.
+
+    stern: Eintrag {wert, zeit} oder None, Wirkung wie in ergebnisse().
+    """
+    status, faellig, _ = _wiederholung(frage, versuche, heute, klausur, stern)
     return status, faellig
 
 
-def letztes_ergebnis(frage, versuche):
-    """Ergebnis des letzten aussagekräftigen Versuchs oder None."""
-    vs = [v for v in gueltige(versuche) if ergebnis(frage, v)]
-    return ergebnis(frage, vs[-1]) if vs else None
+def letztes_ergebnis(frage, versuche, stern=None):
+    """Ergebnis des letzten aussagekräftigen Versuchs mit Stern wie in ergebnisse(), oder None."""
+    vs = ergebnisse(frage, versuche, stern)
+    return vs[-1][1] if vs else None
 
 
 # ---------- Fortschritt ----------
 
 def leerer_fortschritt(fach):
-    return {'format': 1, 'fach': fach, 'versuche': {}, 'schritte': {},
+    return {'format': 1, 'fach': fach, 'versuche': {}, 'schritte': {}, 'sterne': {},
             'md': {'zeit': None, 'basis': {}, 'ueberschrieben': {}}}
 
 
@@ -335,10 +381,34 @@ def brauchbar(v):
             and isinstance(v.get('wahl'), list))
 
 
+def stern_brauchbar(s):
+    """Stern-Eintrag mit wert True oder False und lesbarer Zeit; alles andere wird beim Laden verworfen."""
+    return isinstance(s, dict) and isinstance(s.get('wert'), bool) and zeitpunkt(s.get('zeit')) is not None
+
+
+def _sterne_ableiten(g):
+    # Übernahme des alten Merkmals: Eine Frage ohne eigenen Stern-Eintrag, die einen nicht zurückgenommenen Versuch
+    # mit unsicher hat, bekommt {wert: True, zeit, alt: True}. Jedes Mal neu aus den Versuchen abgeleitet, damit
+    # ein veralteter Stand ihn nach dem Zusammenführen nicht festhält. Schlüssel sortiert wie in der App
+    neu = {}
+    for qid in sorted(set(g['sterne']) | set(g['versuche'])):
+        s = g['sterne'].get(qid)
+        if s and not s.get('alt'):
+            neu[qid] = s
+            continue
+        alt = [v for v in gueltige(g['versuche'].get(qid)) if v.get('unsicher')]
+        if alt:
+            neu[qid] = {'wert': True, 'zeit': alt[-1]['zeit'], 'alt': True}
+    g['sterne'] = neu
+    return g
+
+
 def vervollstaendigen(f, fach=None):
-    """Fehlende Teile eines Fortschritts ergänzen und unbrauchbare Versuche verwerfen.
+    """Fehlende Teile eines Fortschritts ergänzen, unbrauchbare Versuche und Sterne verwerfen.
 
     So legt eine beschädigte Datei die Auswertung nicht lahm. Vorhandene brauchbare Teile bleiben unverändert.
+    Sterne aus dem alten Merkmal unsicher werden neu abgeleitet (_sterne_ableiten); ein Umschalten in der App oder
+    in Docs schreibt einen eigenen Eintrag ohne alt, der von da an gilt.
     """
     leer = leerer_fortschritt(fach)
     g = {**leer, **(f or {})}
@@ -346,8 +416,10 @@ def vervollstaendigen(f, fach=None):
     g['versuche'] = {qid: [v for v in liste if brauchbar(v)] if isinstance(liste, list) else []
                      for qid, liste in (g.get('versuche') or {}).items()}
     g['schritte'] = dict(g.get('schritte') or {})
+    sterne = g.get('sterne') if isinstance(g.get('sterne'), dict) else {}
+    g['sterne'] = {qid: s for qid, s in sterne.items() if stern_brauchbar(s)}
     g['md'] = {**leer['md'], **(g.get('md') or {})}
-    return g
+    return _sterne_ableiten(g)
 
 
 def _spaeter(a, b):
@@ -359,7 +431,8 @@ def zusammenfuehren(a, b):
 
     Versuche über ihre ID, bei gleicher ID gewinnt das spätere 'geaendert', bei Gleichstand der aus a.
     Trägt eine der Fassungen 'geloescht', bleibt der Versuch gelöscht, auch wenn die andere später geändert wurde.
-    Schritte je Feld nach 'zeit', md-Block als Ganzes.
+    Schritte je Feld nach 'zeit', Sterne je Frage nach 'zeit' (bei gleicher Zeit gewinnt der gesetzte),
+    md-Block als Ganzes.
     """
     fach = (a or {}).get('fach') or (b or {}).get('fach')
     a = vervollstaendigen(copy.deepcopy(a or {}), fach)
@@ -386,8 +459,22 @@ def zusammenfuehren(a, b):
         for feld in dict.fromkeys(list(sa) + list(sb)):
             x, y = sa.get(feld), sb.get(feld)
             aus['schritte'][rang][feld] = y if not x else x if not y else (y if _spaeter(y.get('zeit'), x.get('zeit')) else x)
+    # Eigene Stern-Einträge nach Zeit, übernommene (alt) danach neu aus den vereinigten Versuchen
+    for qid in dict.fromkeys(list(a['sterne']) + list(b['sterne'])):
+        x, y = a['sterne'].get(qid), b['sterne'].get(qid)
+        x = None if x and x.get('alt') else x
+        y = None if y and y.get('alt') else y
+        if not x or not y:
+            if x or y:
+                aus['sterne'][qid] = x or y
+        elif _spaeter(y['zeit'], x['zeit']):
+            aus['sterne'][qid] = y
+        elif _spaeter(x['zeit'], y['zeit']):
+            aus['sterne'][qid] = x
+        else:
+            aus['sterne'][qid] = x if x['wert'] else y
     aus['md'] = b['md'] if _spaeter(b['md'].get('zeit'), a['md'].get('zeit')) else a['md']
-    return aus
+    return _sterne_ableiten(aus)
 
 
 # ---------- Abgleich mit dem Lernskript ----------
@@ -396,28 +483,51 @@ def _gleiche_wahl(a, b):
     return sorted(normal(t) for t in (a or [])) == sorted(normal(t) for t in (b or []))
 
 
-def _uebernehmen(f, q, m, md_zeit, jetzt):
-    # Änderung aus Docs als Versuch übernehmen. Gleiche Wahl wie zuletzt: nur die Merkmale anpassen.
-    # Die ID aus Frage, Zustand und Zahl der bisherigen Versuche ist auf jedem Gerät gleich, so legen zwei Geräte
-    # denselben Haken nicht doppelt an, auch wenn sie die .md zu verschiedenen Zeiten lesen.
+def _uebernehmen(f, q, m, kb, md_zeit, jetzt):
+    # Änderung aus Docs übernehmen, getrennt nach Stern und Antwort, jeweils nur, was sich gegenüber basis geändert
+    # hat. So löscht eine neue Antwort in Docs keinen Stern aus der App und umgekehrt.
+    b = teile(kb)
+    zeit = md_zeit or jetzt
+    # Stern: Kästchen unsicher neu angehakt setzt ihn, Zeit = modifiedTime der .md; ist der Eintrag in der App jünger,
+    # bleibt er. Abgehakt wird ignoriert wie jeder entfernte Haken: Eine veraltete Docs-Fassung soll keinen Stern
+    # still löschen, entfernt wird er nur in der App
+    if m['unsicher'] and not b['unsicher']:
+        s = f['sterne'].get(q['id'])
+        if not s or (not s['wert'] and not _spaeter(s['zeit'], zeit)):
+            f['sterne'][q['id']] = {'wert': True, 'zeit': zeit}
+    antwort = {'wahl': list(m['wahl']), 'unsicher': False, 'falsch': m['falsch']}
+    if teile(schluessel(antwort))['wahl'] == b['wahl'] and m['falsch'] == b['falsch']:
+        return
+    # Frage mit Optionen ohne angehakte Option, offene Frage ohne falsch und ohne Versuch: Docs sagt nichts über eine
+    # Antwort. a if b else c = a, wenn b gilt, sonst c
+    ohne_antwort = not m['wahl'] if q['optionen'] else (not m['falsch'] and not letzter_versuch(f, q['id']))
+    if ohne_antwort:
+        return
+    # Gleiche Wahl wie zuletzt: nur falsch anpassen. Sonst neuer Versuch; die ID aus Frage, Antwort und Zahl der
+    # bisherigen Versuche ist auf jedem Gerät gleich, so legen zwei Geräte denselben Haken nicht doppelt an,
+    # auch wenn sie die .md zu verschiedenen Zeiten lesen
     letzter = letzter_versuch(f, q['id'])
     if letzter and _gleiche_wahl(letzter.get('wahl'), m['wahl']):
-        if bool(letzter.get('unsicher')) != m['unsicher'] or bool(letzter.get('falsch')) != m['falsch']:
-            letzter['unsicher'] = m['unsicher']
+        if bool(letzter.get('falsch')) != m['falsch']:
             letzter['falsch'] = m['falsch']
             letzter['geaendert'] = jetzt
         return
-    zeit = md_zeit or jetzt
     liste = f['versuche'].setdefault(q['id'], [])
-    vid = f"docs:{q['id']}:{schluessel(m)}:{len(gueltige(liste))}"
+    vid = f"docs:{q['id']}:{schluessel(antwort)}:{len(gueltige(liste))}"
     if any(v.get('id') == vid for v in liste):
         return
-    liste.append({'id': vid, 'zeit': zeit, 'wahl': list(m['wahl']), 'unsicher': m['unsicher'], 'falsch': m['falsch'],
-                  'quelle': 'docs', 'geaendert': jetzt, 'geloescht': None})
+    liste.append({'id': vid, 'zeit': zeit, **antwort, 'quelle': 'docs', 'geaendert': jetzt, 'geloescht': None})
+
+
+def soll_zustand(f, qid):
+    """Zustand der App, wie er in der .md stehen soll: Optionen und falsch aus dem letzten Versuch, unsicher = Stern."""
+    letzter = letzter_versuch(f, qid)
+    return {'wahl': list(letzter.get('wahl') or []) if letzter else [], 'unsicher': stern_an(f, qid),
+            'falsch': bool(letzter and letzter.get('falsch'))}
 
 
 def abgleichen(fortschritt, md_text, md_zeit, fragen, jetzt):
-    """Drei-Wege-Abgleich je Frage zwischen basis (letzter gemeinsamer Stand), .md und letztem Versuch.
+    """Drei-Wege-Abgleich je Frage zwischen basis (letzter gemeinsamer Stand), .md und App (soll_zustand).
 
     Rein: Fortschritt (schon mit Drive zusammengeführt), md-Text, modifiedTime der .md, Fragendaten, jetzt (ISO).
     Raus: {fortschritt, md_neu (neuer Text oder None), geaendert [ids], fehler, abbruch (Text oder None), md_alt}.
@@ -439,26 +549,29 @@ def abgleichen(fortschritt, md_text, md_zeit, fragen, jetzt):
                 neue_basis[qid] = basis[qid]
             continue
         m = zustaende[qid]
-        # Nur unsicher oder falsch angehakt, aber noch keine Option: Docs ist mitten in einer Antwort, abwarten
-        if q['optionen'] and not m['wahl'] and (m['unsicher'] or m['falsch']):
+        km, kb = schluessel(m), basis.get(qid) or LEER
+        # Merkmal angehakt, aber keine Option, obwohl im letzten gemeinsamen Stand eine angehakt war: Docs ist mitten
+        # in einer Antwort, abwarten. Sonst ist ein angehaktes unsicher allein der Stern
+        if q['optionen'] and not m['wahl'] and (m['falsch'] or (m['unsicher'] and teile(kb)['wahl'] != '')):
             if basis.get(qid):
                 neue_basis[qid] = basis[qid]
             continue
-        km, kb = schluessel(m), basis.get(qid) or LEER
-        # Neu in Docs angehakt und keine alte, von der App überschriebene Fassung: als Versuch übernehmen
+        # Neu in Docs angehakt und keine alte, von der App überschriebene Fassung: übernehmen
         if km != kb and km != LEER and km not in (ueb.get(qid) or []):
-            _uebernehmen(f, q, m, md_zeit, jetzt)
-        # Soll = letzter Versuch; weicht die .md ab, wird sie umgeschrieben und ihr Stand als überschrieben gemerkt
-        letzter = letzter_versuch(f, qid)
-        s = zustand_aus(letzter) if letzter else _leerer_zustand()
+            _uebernehmen(f, q, m, kb, md_zeit, jetzt)
+        # Weicht die .md vom Soll ab, wird sie umgeschrieben und ihr Stand als überschrieben gemerkt
+        s = soll_zustand(f, qid)
         ks = schluessel(s)
         if ks != km:
             geaendert.append(qid)
             soll[qid] = s
             # [km] + alte ohne km, höchstens drei
             neue_ueb[qid] = ([km] + [k for k in (neue_ueb.get(qid) or []) if k != km])[:3]
-            # Geleert ohne jeden Versuch, auch ohne Grabstein: Die App kennt die Antwort gar nicht
-            if ks == LEER and not f['versuche'].get(qid):
+            # Haken entfernt, die die App gar nicht kennt: kein Versuch, auch kein Grabstein, und dabei geht eine
+            # Antwort aus der .md verloren oder die Frage wird ganz geleert, ohne dass es einen Stern-Eintrag gibt
+            in_md = teile(km)
+            unbekannt = not f['versuche'].get(qid)
+            if unbekannt and (in_md['wahl'] != '' or in_md['falsch'] or (ks == LEER and qid not in f['sterne'])):
                 geleert.append(q)
         if ks != LEER:
             neue_basis[qid] = ks
@@ -514,25 +627,40 @@ def tempo(daten, f, heute):
             'bis_klausur': tage_zwischen(heute, daten['klausur'])}
 
 
-def fehler_sammlung(daten, f):
-    """Jede Frage, die je falsch oder unsicher beantwortet wurde, auch wenn sie inzwischen sitzt.
+def _sammel_eintrag(q, t, f, pos):
+    # Je Frage: Zahl der falschen Versuche, ob der letzte falsch war, Zeit des letzten Versuchs (None = nie geübt)
+    # und Position des Themas im Plan. Zurückgenommene Versuche zählen nicht
+    vs = ergebnisse(q, f['versuche'].get(q['id']), None)
+    return {'frage': q, 'thema': t, 'falsch': sum(1 for _, e in vs if e == 'falsch'),
+            'zuletzt_falsch': bool(vs) and vs[-1][1] == 'falsch', 'zuletzt': vs[-1][0]['zeit'] if vs else None,
+            'pos': pos}
 
-    Zurückgenommene Versuche zählen nicht. Reihenfolge: am längsten nicht geübte zuerst, bei gleicher Zeit nach Plan.
-    Raus: [{'frage', 'thema', 'falsch': Anzahl, 'unsicher': Anzahl, 'zuletzt': Zeit des letzten Versuchs}]
+
+def _nach_uebung(x):
+    # Sortierschlüssel: nie geübte zuerst (-inf), dann am längsten nicht geübte, bei Gleichstand nach Plan
+    return (_ms(x['zuletzt']) if x['zuletzt'] else float('-inf'), x['pos'])
+
+
+def falsch_sammlung(daten, f):
+    """Jede Frage, die je falsch beantwortet wurde, auch wenn sie inzwischen sitzt.
+
+    Zuerst die, deren letzte Antwort falsch war, darin und danach am längsten nicht geübte zuerst, dann nach Plan.
+    Raus: [{'frage', 'thema', 'falsch': Anzahl, 'zuletzt_falsch', 'zuletzt': Zeit des letzten Versuchs, 'pos'}]
     """
     aus = []
     for pos, (t, _) in enumerate(plan_liste(daten)):
         for q in t['fragen']:
             if q['typ'] == 'fragment':
                 continue
-            # Nur Versuche mit Ergebnis; ergebnis() ist None bei leerer Wahl
-            vs = [v for v in gueltige(f['versuche'].get(q['id'])) if ergebnis(q, v)]
-            zahl = {'falsch': 0, 'unsicher': 0}
-            for v in vs:
-                e = ergebnis(q, v)
-                if e in zahl:
-                    zahl[e] += 1
-            if zahl['falsch'] + zahl['unsicher']:
-                aus.append({'frage': q, 'thema': t, **zahl, 'zuletzt': vs[-1]['zeit'], 'pos': pos})
-    # Sortierschlüssel: Zeitpunkt des letzten Versuchs in Millisekunden, dann Position im Plan
-    return sorted(aus, key=lambda x: (_ms(x['zuletzt']), x['pos']))
+            x = _sammel_eintrag(q, t, f, pos)
+            if x['falsch']:
+                aus.append(x)
+    # (not zuletzt_falsch, ...) sortiert die zuletzt falschen (False) vor die übrigen (True)
+    return sorted(aus, key=lambda x: (not x['zuletzt_falsch'], *_nach_uebung(x)))
+
+
+def markiert_sammlung(daten, f):
+    """Genau die Fragen mit Stern, am längsten nicht geübte zuerst. Gleiche Felder wie falsch_sammlung."""
+    aus = [_sammel_eintrag(q, t, f, pos) for pos, (t, _) in enumerate(plan_liste(daten)) for q in t['fragen']
+           if stern_an(f, q['id'])]
+    return sorted(aus, key=_nach_uebung)

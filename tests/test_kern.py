@@ -67,18 +67,21 @@ class Vektoren(unittest.TestCase):
                 # Fehlende Felder der Vektoren mit den Vorgaben ergänzen; {**a, **v} = a, überschrieben durch v
                 versuche = [{'id': f'v{i}', 'unsicher': False, 'falsch': False, 'geloescht': None, **v}
                             for i, v in enumerate(fall['versuche'])]
-                status, faellig = kern.wiederholung(frage(fall['frage']), versuche, fall['heute'], DATEN['klausur'])
+                status, faellig = kern.wiederholung(frage(fall['frage']), versuche, fall['heute'], DATEN['klausur'],
+                                                    {'wert': True, 'zeit': fall['stern']} if fall.get('stern') else None)
                 self.assertEqual((status, faellig), (fall['status'], fall['faellig']))
 
-    def test_fehler_sammlung(self):
-        for fall in lade('fehler.json'):
+    def test_sammlungen(self):
+        for fall in lade('sammlung.json'):
             with self.subTest(fall['name']):
-                # Fehlende Felder wie in der App ergänzen; {**a, **b} = b überschreibt a
+                # Fehlende Felder wie in der App ergänzen; {**a, **b} = b überschreibt a. Danach vervollstaendigen,
+                # wie in der App, damit das alte Merkmal unsicher zum Stern wird
                 versuche = {qid: [{'id': f'{qid}:{i}', 'unsicher': False, 'falsch': False, 'geloescht': None, **v}
                                   for i, v in enumerate(vs)] for qid, vs in fall['versuche'].items()}
-                r = kern.fehler_sammlung(DATEN, {'versuche': versuche})
-                self.assertEqual([{'frage': x['frage']['id'], 'falsch': x['falsch'], 'unsicher': x['unsicher']} for x in r],
-                                 fall['erwartet'])
+                f = kern.vervollstaendigen({'versuche': versuche, 'sterne': fall.get('sterne') or {}}, 'test')
+                self.assertEqual([{'frage': x['frage']['id'], 'falsch': x['falsch']} for x in kern.falsch_sammlung(DATEN, f)],
+                                 fall['erwartet']['falsch'])
+                self.assertEqual([x['frage']['id'] for x in kern.markiert_sammlung(DATEN, f)], fall['erwartet']['markiert'])
 
     def test_abgleich(self):
         for fall in lade('abgleich.json'):
@@ -102,6 +105,8 @@ class Vektoren(unittest.TestCase):
                 self.assertEqual(r['fortschritt']['md']['basis'], erw['basis'])
                 self.assertEqual(r['fortschritt']['md']['ueberschrieben'], erw['ueberschrieben'])
                 self.assertEqual(r['fortschritt']['md']['zeit'], fall['jetzt'])
+                # Sterne: alle Fragen, deren Stern nach dem Abgleich an ist
+                self.assertEqual(sorted(q for q in IX['fragen'] if kern.stern_an(r['fortschritt'], q)), erw['sterne'])
 
 
 class Normal(unittest.TestCase):
@@ -133,10 +138,11 @@ class Ergebnis(unittest.TestCase):
 
     def test_ergebnisse(self):
         self.assertEqual(kern.ergebnis(frage('1.Q01'), {'wahl': ['Apfel']}), 'richtig')
-        self.assertEqual(kern.ergebnis(frage('1.Q01'), {'wahl': ['Apfel'], 'unsicher': True}), 'unsicher')
+        # Das alte Merkmal unsicher zählt im Ergebnis nicht mehr, es wirkt nur noch als Stern
+        self.assertEqual(kern.ergebnis(frage('1.Q01'), {'wahl': ['Apfel'], 'unsicher': True}), 'richtig')
         self.assertEqual(kern.ergebnis(frage('1.Q01'), {'wahl': ['Apfel', 'Banane']}), 'falsch')
         self.assertIsNone(kern.ergebnis(frage('1.Q01'), {'wahl': [], 'unsicher': True}))
-        self.assertEqual(kern.ergebnis(frage('1.Q03'), {'wahl': [], 'unsicher': True}), 'unsicher')
+        self.assertEqual(kern.ergebnis(frage('1.Q03'), {'wahl': [], 'unsicher': True}), 'richtig')
         self.assertEqual(kern.ergebnis(frage('1.Q03'), {'wahl': [], 'unsicher': True, 'falsch': True}), 'falsch')
         self.assertIsNone(kern.ergebnis(frage('2.Q03'), {'wahl': ['x']}))
 
@@ -183,8 +189,9 @@ class Umschreiben(unittest.TestCase):
         self.assertIn('- [x] Gurke\r', r['md_neu'])
         self.assertIn('- [x] Banane  \r', r['md_neu'])
         self.assertIn('- [ ] Apfel  \r', r['md_neu'])
-        # Frage 1: Banane an, Apfel und unsicher aus; Frage 2: Gurke und unsicher an
-        self.assertEqual(len(geaendert), 5)
+        # Frage 1: Banane an, Apfel aus, unsicher bleibt als Stern aus Docs; Frage 2: Gurke und unsicher (Stern) an
+        self.assertEqual(len(geaendert), 4)
+        self.assertEqual(r['md_neu'].count('- [x] *unsicher*\r'), 2)
         self.assertEqual(set(r['geaendert']), {'1.Q01', '1.Q02'})
 
     def test_lesen_und_schreiben_stimmen_ueberein(self):
@@ -266,14 +273,26 @@ class Schutz(unittest.TestCase):
                                        '(1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8 …)')
 
     def test_nur_unsicher_ohne_option_wartet(self):
-        # Docs mitten in einer Antwort: kein Import, kein Umschreiben, basis bleibt
+        # Docs mitten in einer Antwort, die App kennt schon eine: kein Import, kein Stern, kein Umschreiben, basis bleibt
         md = MD.replace('- [ ] *unsicher*\n\n*2425-03', '- [x] *unsicher*\n\n*2425-03', 1)
         self.assertNotEqual(md, MD)
-        f = {'versuche': {}, 'md': {'zeit': None, 'basis': {'1.Q02': 'Gurke#u0f0'}, 'ueberschrieben': {}}}
+        f = {'versuche': {'1.Q02': [app_versuch('a', '2026-11-08T17:00:00Z', ['Gurke'])]},
+             'md': {'zeit': None, 'basis': {'1.Q02': 'Gurke#u0f0'}, 'ueberschrieben': {}}}
         r = kern.abgleichen(f, md, '2026-11-08T17:25:00.000Z', DATEN, '2026-11-08T21:10:00.000Z')
         self.assertNotIn('1.Q02', r['geaendert'])
-        self.assertNotIn('1.Q02', r['fortschritt']['versuche'])
+        self.assertEqual(len(r['fortschritt']['versuche']['1.Q02']), 1)
+        self.assertFalse(kern.stern_an(r['fortschritt'], '1.Q02'))
         self.assertEqual(r['fortschritt']['md']['basis']['1.Q02'], 'Gurke#u0f0')
+
+    def test_nur_unsicher_ohne_antwort_ist_der_stern(self):
+        # Unbeantwortete Frage, in Docs nur unsicher angehakt: Stern an, kein Versuch, nichts umzuschreiben
+        md = MD.replace('- [ ] *unsicher*\n\n*2425-03', '- [x] *unsicher*\n\n*2425-03', 1)
+        r = kern.abgleichen(kern.leerer_fortschritt('test'), md, '2026-11-08T17:25:00.000Z', DATEN,
+                            '2026-11-08T21:10:00.000Z')
+        self.assertTrue(kern.stern_an(r['fortschritt'], '1.Q02'))
+        self.assertNotIn('1.Q02', r['fortschritt']['versuche'])
+        self.assertNotIn('1.Q02', r['geaendert'])
+        self.assertEqual(r['fortschritt']['md']['basis']['1.Q02'], '#u1f0')
 
     def test_kein_neuer_text_ohne_unterschied(self):
         # Soll mit falsch-Merkmal bei einer Frage ohne falsch-Kästchen: abweichend, aber nichts zu schreiben
@@ -341,8 +360,9 @@ class Zusammenfuehren(unittest.TestCase):
         r = kern.zusammenfuehren(a['fortschritt'], b['fortschritt'])
         # {qid: [..]} = je Frage die IDs der Versuche
         self.assertEqual({qid: [v['id'] for v in vs] for qid, vs in r['versuche'].items()},
-                         {'1.Q01': ['docs:1.Q01:Apfel#u1f0:0'], '1.Q03': ['docs:1.Q03:#u0f1:0'],
+                         {'1.Q01': ['docs:1.Q01:Apfel#u0f0:0'], '1.Q03': ['docs:1.Q03:#u0f1:0'],
                           '2.Q01': ['docs:2.Q01:Erbse|Gurke#u0f0:0']})
+        self.assertEqual(sorted(q for q in r['sterne'] if kern.stern_an(r, q)), ['1.Q01'])
 
     def test_docs_id_zaehlt_die_gueltigen_versuche_davor(self):
         f = {'versuche': {'1.Q01': [app_versuch('a1', '2026-11-08T20:00:00Z', ['Apfel']),
@@ -350,7 +370,8 @@ class Zusammenfuehren(unittest.TestCase):
              'md': {'zeit': None, 'basis': {}, 'ueberschrieben': {}}}
         md = MD.replace('- [ ] Banane  ', '- [x] Banane  ', 1).replace('- [x] Apfel  ', '- [ ] Apfel  ', 1)
         r = kern.abgleichen(f, md, '2026-11-08T21:20:00.000Z', DATEN, '2026-11-08T21:25:00.000Z')
-        self.assertEqual(r['fortschritt']['versuche']['1.Q01'][-1]['id'], 'docs:1.Q01:Banane#u1f0:1')
+        # Die ID trägt nur die Antwort; unsicher in Docs ist der Stern und gehört nicht zum Versuch
+        self.assertEqual(r['fortschritt']['versuche']['1.Q01'][-1]['id'], 'docs:1.Q01:Banane#u0f0:1')
 
     def test_unbrauchbare_versuche_werden_verworfen(self):
         gut = app_versuch('v1', '2026-11-08T10:00:00Z', ['Apfel'])
@@ -366,6 +387,138 @@ class Zusammenfuehren(unittest.TestCase):
         r = kern.zusammenfuehren(a, b)
         r['versuche']['1.Q01'][0]['wahl'].append('x')
         self.assertEqual((a, b), vorher)
+
+
+def stern(wert, zeit):
+    return {'wert': wert, 'zeit': zeit}
+
+
+class Stern(unittest.TestCase):
+
+    def test_uebernahme_des_alten_merkmals(self):
+        # Letzter nicht zurückgenommener Versuch mit unsicher gibt Stern und Zeit; vorhandener Eintrag bleibt
+        f = kern.vervollstaendigen({'versuche': {
+            '1.Q01': [app_versuch('a', '2026-11-08T10:00:00Z', ['Apfel'], unsicher=True),
+                      app_versuch('b', '2026-11-09T10:00:00Z', ['Apfel'], unsicher=True),
+                      app_versuch('c', '2026-11-10T10:00:00Z', ['Apfel'])],
+            '1.Q02': [app_versuch('d', '2026-11-08T10:00:00Z', ['Gurke'], unsicher=True, geloescht='2026-11-08T11:00:00Z')],
+            '1.Q03': [app_versuch('e', '2026-11-08T10:00:00Z', [], unsicher=True)],
+            '2.Q01': [app_versuch('g', '2026-11-08T10:00:00Z', ['Erbse'], unsicher=True)],
+        }, 'sterne': {'1.Q03': stern(False, '2026-11-09T10:00:00Z')}}, 'test')
+        self.assertEqual(f['sterne'], {'1.Q01': {**stern(True, '2026-11-09T10:00:00Z'), 'alt': True},
+                                       '1.Q03': stern(False, '2026-11-09T10:00:00Z'),
+                                       '2.Q01': {**stern(True, '2026-11-08T10:00:00Z'), 'alt': True}})
+        # Wiederholt angewendet ändert sich nichts
+        self.assertEqual(kern.vervollstaendigen(copy.deepcopy(f), 'test'), f)
+
+    def test_veralteter_stand_haelt_uebernommenen_stern_nicht_fest(self):
+        # Auf Drive ist unsicher am Versuch y später abgehakt bzw. y zurückgenommen; ein Gerät hat noch die alte Fassung
+        q = frage('1.Q01')
+        x = app_versuch('x', '2026-11-01T10:00:00Z', ['Apfel'])
+        y = app_versuch('y', '2026-11-08T10:00:00Z', ['Apfel'], unsicher=True)
+        for drive in (dict(y, unsicher=False, geaendert='2026-11-08T12:00:00Z'),
+                      dict(y, geloescht='2026-11-08T12:00:00Z', geaendert='2026-11-08T12:00:00Z')):
+            with self.subTest(drive=drive):
+                veraltet = kern.vervollstaendigen({'versuche': {'1.Q01': [x, y]}}, 'test')
+                for a, b in ((veraltet, {'versuche': {'1.Q01': [x, drive]}}), ({'versuche': {'1.Q01': [x, drive]}}, veraltet)):
+                    g = kern.zusammenfuehren(a, b)
+                    self.assertFalse(kern.stern_an(g, '1.Q01'))
+                    self.assertEqual(kern.wiederholung(q, g['versuche']['1.Q01'], '2026-11-12', DATEN['klausur'],
+                                                       g['sterne'].get('1.Q01')), ('sicher', None))
+
+    def test_uebernommener_stern_wirkt_wie_das_alte_merkmal(self):
+        # Gleiche Zeit (falsch mit unsicher, dann richtig) und unsicher an einem Versuch ohne Ergebnis: wie vorher
+        q = frage('1.Q01')
+        faelle = [([app_versuch('a', '2026-11-08T10:00:00Z', ['Banane'], unsicher=True),
+                    app_versuch('b', '2026-11-08T10:00:00Z', ['Apfel'])], ('wartet', '2026-11-10')),
+                  ([app_versuch('a', '2026-11-08T10:00:00Z', ['Apfel']),
+                    app_versuch('b', '2026-11-08T11:00:00Z', [], unsicher=True)], ('sicher', None))]
+        for versuche, soll in faelle:
+            g = kern.vervollstaendigen({'versuche': {'1.Q01': versuche}}, 'test')
+            self.assertEqual(kern.wiederholung(q, versuche, '2026-11-09', DATEN['klausur'], g['sterne'].get('1.Q01')), soll)
+
+    def test_stern_aus_nimmt_auch_das_alte_merkmal(self):
+        q = frage('1.Q01')
+        f = kern.vervollstaendigen({'versuche': {'1.Q01': [app_versuch('a', '2026-11-08T10:00:00Z', ['Apfel'], unsicher=True)]}},
+                                   'test')
+        self.assertEqual(kern.wiederholung(q, f['versuche']['1.Q01'], '2026-11-09', DATEN['klausur'], f['sterne']['1.Q01']),
+                         ('wartet', '2026-11-11'))
+        kern.stern_setzen(f, '1.Q01', False, '2026-11-09T08:00:00Z')
+        f = kern.vervollstaendigen(f, 'test')
+        self.assertEqual(kern.wiederholung(q, f['versuche']['1.Q01'], '2026-11-09', DATEN['klausur'], f['sterne']['1.Q01']),
+                         ('sicher', None))
+
+    def test_schutz_auch_wenn_nur_sterne_uebrig_sind(self):
+        # Versuche verloren, eigene Sterne noch da: Die Antworten würden aus der .md entfernt, das hält an
+        daten, md, f = viele_fragen(6)
+        md = md.replace('- [ ] *unsicher*', '- [x] *unsicher*')
+        f['md']['basis'] = {k: 'A#u1f0' for k in f['md']['basis']}
+        f['sterne'] = {k: stern(True, '2026-11-08T19:00:00Z') for k in f['md']['basis']}
+        r = kern.abgleichen(f, md, '2026-11-08T21:00:00Z', daten, '2026-11-08T21:05:00Z')
+        self.assertIsNotNone(r['abbruch'])
+        self.assertIsNone(r['md_neu'])
+
+    def test_unbrauchbare_sterne_werden_verworfen(self):
+        f = kern.vervollstaendigen({'sterne': {'a': stern('ja', '2026-11-08T10:00:00Z'), 'b': stern(True, 'gestern'),
+                                               'c': None, 'd': stern(False, '2026-11-08T10:00:00Z')}}, 'test')
+        self.assertEqual(f['sterne'], {'d': stern(False, '2026-11-08T10:00:00Z')})
+        self.assertEqual(kern.vervollstaendigen({'sterne': ['kein Dictionary']}, 'test')['sterne'], {})
+
+    def test_zusammenfuehren_spaeterer_gewinnt_bei_gleicher_zeit_der_gesetzte(self):
+        a = {'sterne': {'1.Q01': stern(True, '2026-11-08T10:00:00Z'), '1.Q02': stern(False, '2026-11-08T12:00:00Z'),
+                        '1.Q03': stern(False, '2026-11-08T10:00:00Z')}}
+        b = {'sterne': {'1.Q01': stern(False, '2026-11-08T11:00:00Z'), '1.Q02': stern(True, '2026-11-08T11:00:00Z'),
+                        '1.Q03': stern(True, '2026-11-08T10:00:00Z'), '2.Q01': stern(True, '2026-11-08T09:00:00Z')}}
+        for x, y in ((a, b), (b, a)):
+            r = kern.zusammenfuehren(x, y)
+            self.assertEqual({q: s['wert'] for q, s in r['sterne'].items()},
+                             {'1.Q01': False, '1.Q02': False, '1.Q03': True, '2.Q01': True})
+
+    def test_stand_ohne_sterne_loescht_keinen_stern(self):
+        # Ein Stand aus einer älteren Fassung der App kennt keine Sterne; die Vereinigung behält sie
+        mit = {'versuche': {'1.Q01': [app_versuch('a', '2026-11-08T10:00:00Z', ['Apfel'])]},
+               'sterne': {'1.Q01': stern(True, '2026-11-08T10:01:00Z'), '1.Q02': stern(False, '2026-11-08T10:02:00Z')}}
+        ohne = {'versuche': {'1.Q01': [app_versuch('a', '2026-11-08T10:00:00Z', ['Apfel'])]}}
+        for x, y in ((mit, ohne), (ohne, mit)):
+            self.assertEqual(kern.zusammenfuehren(x, y)['sterne'], mit['sterne'])
+
+    def test_ausgeschalteter_stern_kommt_durch_alte_merkmale_nicht_zurueck(self):
+        # Gerät A schaltet den übernommenen Stern aus, Gerät B kennt nur das alte Merkmal: aus bleibt aus
+        alt = {'versuche': {'1.Q01': [app_versuch('a', '2026-11-08T10:00:00Z', ['Apfel'], unsicher=True)]}}
+        a = kern.vervollstaendigen(copy.deepcopy(alt), 'test')
+        kern.stern_setzen(a, '1.Q01', False, '2026-11-16T18:00:00Z')
+        for x, y in ((a, alt), (alt, a)):
+            self.assertFalse(kern.stern_an(kern.zusammenfuehren(x, y), '1.Q01'))
+
+    def test_stern_zaehlt_im_tempo_nicht_als_antwort(self):
+        f = kern.leerer_fortschritt('test')
+        kern.stern_setzen(f, '1.Q01', True, '2026-11-08T10:00:00Z')
+        self.assertEqual(kern.tempo(DATEN, f, '2026-11-09')['offen'], 4)
+        self.assertEqual(kern.wiederholung(frage('1.Q01'), [], '2026-11-09', DATEN['klausur'], stern(True, '2026-11-08T10:00:00Z')),
+                         ('neu', None))
+
+    def test_neuer_versuch_aus_docs_traegt_kein_unsicher(self):
+        r = kern.abgleichen(kern.leerer_fortschritt('test'), MD, '2026-11-08T17:25:00.000Z', DATEN,
+                            '2026-11-08T21:00:00.000Z')
+        self.assertFalse(any(v['unsicher'] for vs in r['fortschritt']['versuche'].values() for v in vs))
+
+    def test_falsch_zahl(self):
+        vs = [app_versuch('a', '2026-11-08T10:00:00Z', ['Banane']), app_versuch('b', '2026-11-09T10:00:00Z', ['Apfel']),
+              app_versuch('c', '2026-11-10T10:00:00Z', ['Banane']),
+              app_versuch('d', '2026-11-11T10:00:00Z', ['Banane'], geloescht='2026-11-11T10:01:00Z')]
+        self.assertEqual(kern.falsch_zahl(frage('1.Q01'), vs), 2)
+
+    def test_abgleich_mit_alter_basis_ohne_aenderung_in_docs(self):
+        # Basis einer älteren Fassung (unsicher am letzten Versuch) und dieselbe .md: Stern übernommen, nichts zu tun
+        f = {'versuche': {'1.Q01': [app_versuch('a', '2026-11-08T17:00:00Z', ['Apfel'], unsicher=True)],
+                          '1.Q03': [app_versuch('b', '2026-11-08T17:00:00Z', [], falsch=True)],
+                          '2.Q01': [app_versuch('c', '2026-11-08T17:00:00Z', ['Erbse', 'Gurke'])]},
+             'md': {'zeit': '2026-11-08T17:30:00Z', 'basis': {'1.Q01': 'Apfel#u1f0', '1.Q03': '#u0f1',
+                                                             '2.Q01': 'Erbse|Gurke#u0f0'}, 'ueberschrieben': {}}}
+        r = kern.abgleichen(f, MD, '2026-11-08T17:25:00.000Z', DATEN, '2026-11-08T21:00:00.000Z')
+        self.assertEqual((r['geaendert'], r['md_neu']), ([], None))
+        self.assertTrue(kern.stern_an(r['fortschritt'], '1.Q01'))
+        self.assertEqual(r['fortschritt']['versuche'], kern.vervollstaendigen(f, 'test')['versuche'])
 
 
 class Plan(unittest.TestCase):

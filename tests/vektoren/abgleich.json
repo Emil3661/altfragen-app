@@ -1,6 +1,6 @@
 [
  {
-  "name": "Erster Abgleich übernimmt die Haken aus Docs",
+  "name": "Erster Abgleich übernimmt die Haken aus Docs, unsicher als Stern",
   "ersetze": [],
   "mdZeit": "2026-11-08T17:25:00.000Z",
   "jetzt": "2026-11-08T21:00:00.000Z",
@@ -15,7 +15,7 @@
   "erwartet": {
    "versuche": {
     "1.Q01": [
-     "Apfel#u1f0"
+     "Apfel#u0f0"
     ],
     "1.Q03": [
      "#u0f1"
@@ -30,7 +30,10 @@
     "1.Q03": "#u0f1",
     "2.Q01": "Erbse|Gurke#u0f0"
    },
-   "ueberschrieben": {}
+   "ueberschrieben": {},
+   "sterne": [
+    "1.Q01"
+   ]
   }
  },
  {
@@ -42,12 +45,12 @@
    "versuche": {
     "1.Q01": [
      {
-      "id": "docs:1.Q01:Apfel#u1f0:2026-11-08T17:25:00.000Z",
+      "id": "docs:1.Q01:Apfel#u0f0:0",
       "zeit": "2026-11-08T17:25:00.000Z",
       "wahl": [
        "Apfel"
       ],
-      "unsicher": true,
+      "unsicher": false,
       "falsch": false,
       "quelle": "docs",
       "geaendert": "2026-11-08T21:00:00.000Z",
@@ -90,12 +93,18 @@
      "2.Q01": "Erbse|Gurke#u0f0"
     },
     "ueberschrieben": {}
+   },
+   "sterne": {
+    "1.Q01": {
+     "wert": true,
+     "zeit": "2026-11-08T17:25:00.000Z"
+    }
    }
   },
   "erwartet": {
    "versuche": {
     "1.Q01": [
-     "Apfel#u1f0"
+     "Apfel#u0f0"
     ],
     "1.Q03": [
      "#u0f1"
@@ -110,7 +119,10 @@
     "1.Q03": "#u0f1",
     "2.Q01": "Erbse|Gurke#u0f0"
    },
-   "ueberschrieben": {}
+   "ueberschrieben": {},
+   "sterne": [
+    "1.Q01"
+   ]
   }
  },
  {
@@ -188,7 +200,10 @@
     "1.Q02": [
      "#u0f0"
     ]
-   }
+   },
+   "sterne": [
+    "1.Q01"
+   ]
   }
  },
  {
@@ -300,7 +315,10 @@
     "1.Q02": [
      "#u0f0"
     ]
-   }
+   },
+   "sterne": [
+    "1.Q01"
+   ]
   }
  },
  {
@@ -399,11 +417,14 @@
     "1.Q01": [
      "Banane#u1f0"
     ]
-   }
+   },
+   "sterne": [
+    "1.Q01"
+   ]
   }
  },
  {
-  "name": "Korrektur in Docs wird neuer Versuch",
+  "name": "Korrektur in Docs wird neuer Versuch, der Stern bleibt",
   "ersetze": [
    [
     "- [x] Apfel  ",
@@ -474,7 +495,7 @@
    "versuche": {
     "1.Q01": [
      "Apfel#u1f0",
-     "Banane#u1f0"
+     "Banane#u0f0"
     ],
     "1.Q03": [
      "#u0f1"
@@ -489,11 +510,14 @@
     "1.Q03": "#u0f1",
     "2.Q01": "Erbse|Gurke#u0f0"
    },
-   "ueberschrieben": {}
+   "ueberschrieben": {},
+   "sterne": [
+    "1.Q01"
+   ]
   }
  },
  {
-  "name": "Nur unsicher in Docs geändert passt den letzten Versuch an",
+  "name": "Nur unsicher in Docs angehakt setzt den Stern, der Versuch bleibt",
   "ersetze": [],
   "mdZeit": "2026-11-08T21:20:00.000Z",
   "jetzt": "2026-11-08T21:25:00.000Z",
@@ -554,7 +578,7 @@
   "erwartet": {
    "versuche": {
     "1.Q01": [
-     "Apfel#u1f0"
+     "Apfel#u0f0"
     ],
     "1.Q03": [
      "#u0f1"
@@ -569,7 +593,10 @@
     "1.Q03": "#u0f1",
     "2.Q01": "Erbse|Gurke#u0f0"
    },
-   "ueberschrieben": {}
+   "ueberschrieben": {},
+   "sterne": [
+    "1.Q01"
+   ]
   }
  },
  {
@@ -656,11 +683,12 @@
     "1.Q01": [
      "Apfel#u1f0"
     ]
-   }
+   },
+   "sterne": []
   }
  },
  {
-  "name": "Haken nur bei unsicher, ohne Option, bleibt unberührt",
+  "name": "Nur unsicher ohne Option bei unbeantworteter Frage setzt den Stern",
   "ersetze": [
    [
     "- [ ] *unsicher*",
@@ -743,9 +771,835 @@
    "basis": {
     "1.Q01": "Apfel#u1f0",
     "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0",
+    "1.Q02": "#u1f0"
+   },
+   "ueberschrieben": {},
+   "sterne": [
+    "1.Q01",
+    "1.Q02"
+   ]
+  }
+ },
+ {
+  "name": "Stern aus der App landet als unsicher in der .md",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T17:25:00.000Z",
+  "jetzt": "2026-11-08T21:10:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "docs:1.Q03:#u0f1:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "docs:2.Q01:Erbse|Gurke#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "sterne": {
+    "1.Q01": {
+     "wert": true,
+     "zeit": "2026-11-08T17:25:00.000Z"
+    },
+    "2.Q01": {
+     "wert": true,
+     "zeit": "2026-11-08T21:08:00.000Z"
+    }
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "2.Q01"
+   ],
+   "zeilen": {
+    "- [x] *unsicher*": 2
+   },
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u1f0"
+   },
+   "ueberschrieben": {
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "sterne": [
+    "1.Q01",
+    "2.Q01"
+   ]
+  }
+ },
+ {
+  "name": "Stern in der App entfernt, unsicher verschwindet aus der .md",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T17:25:00.000Z",
+  "jetzt": "2026-11-08T21:10:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "docs:1.Q03:#u0f1:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "docs:2.Q01:Erbse|Gurke#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "sterne": {
+    "1.Q01": {
+     "wert": false,
+     "zeit": "2026-11-08T21:05:00.000Z"
+    }
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "1.Q01"
+   ],
+   "zeilen": {
+    "- [x] *unsicher*": 0
+   },
+   "basis": {
+    "1.Q01": "Apfel#u0f0",
+    "1.Q03": "#u0f1",
     "2.Q01": "Erbse|Gurke#u0f0"
    },
-   "ueberschrieben": {}
+   "ueberschrieben": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ]
+   },
+   "sterne": []
+  }
+ },
+ {
+  "name": "unsicher in Docs abgehakt: Stern bleibt, die .md bekommt den Haken zurück",
+  "ersetze": [
+   [
+    "- [x] *unsicher*",
+    "- [ ] *unsicher*"
+   ]
+  ],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "docs:1.Q03:#u0f1:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "docs:2.Q01:Erbse|Gurke#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "sterne": {
+    "1.Q01": {
+     "wert": true,
+     "zeit": "2026-11-08T17:25:00.000Z"
+    }
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "1.Q01"
+   ],
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {
+    "1.Q01": [
+     "Apfel#u0f0"
+    ]
+   },
+   "sterne": [
+    "1.Q01"
+   ],
+   "zeilen": {
+    "- [x] *unsicher*": 1
+   }
+  }
+ },
+ {
+  "name": "unsicher in Docs angehakt, Stern in der App danach entfernt: bleibt aus",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "docs:1.Q03:#u0f1:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "docs:2.Q01:Erbse|Gurke#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "sterne": {
+    "1.Q01": {
+     "wert": false,
+     "zeit": "2026-11-08T21:22:00.000Z"
+    }
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u0f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "1.Q01"
+   ],
+   "zeilen": {
+    "- [x] *unsicher*": 0
+   },
+   "basis": {
+    "1.Q01": "Apfel#u0f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {
+    "1.Q01": [
+     "Apfel#u1f0"
+    ]
+   },
+   "sterne": []
+  }
+ },
+ {
+  "name": "Neue Antwort in Docs lässt den Stern der App stehen",
+  "ersetze": [
+   [
+    "- [x] Apfel  ",
+    "- [ ] Apfel  "
+   ],
+   [
+    "- [ ] Banane  ",
+    "- [x] Banane  "
+   ],
+   [
+    "- [x] *unsicher*",
+    "- [ ] *unsicher*"
+   ]
+  ],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "docs:1.Q03:#u0f1:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "docs:2.Q01:Erbse|Gurke#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "sterne": {
+    "1.Q01": {
+     "wert": true,
+     "zeit": "2026-11-08T21:15:00.000Z"
+    }
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u0f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u0f0",
+     "Banane#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "1.Q01"
+   ],
+   "zeilen": {
+    "- [x] *unsicher*": 1,
+    "- [x] Banane  ": 1
+   },
+   "basis": {
+    "1.Q01": "Banane#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {
+    "1.Q01": [
+     "Banane#u0f0"
+    ]
+   },
+   "sterne": [
+    "1.Q01"
+   ]
+  }
+ },
+ {
+  "name": "unsicher ohne Option bei beantworteter Frage: Docs mitten in einer Antwort, bleibt unberührt",
+  "ersetze": [
+   [
+    "- [x] Apfel  ",
+    "- [ ] Apfel  "
+   ]
+  ],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "docs:1.Q03:#u0f1:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "docs:2.Q01:Erbse|Gurke#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "sterne": {
+    "1.Q01": {
+     "wert": true,
+     "zeit": "2026-11-08T17:25:00.000Z"
+    }
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [],
+   "zeilen": {
+    "- [ ] Apfel  ": 1,
+    "- [x] *unsicher*": 1
+   },
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {},
+   "sterne": [
+    "1.Q01"
+   ]
+  }
+ },
+ {
+  "name": "unsicher in Docs angehakt nach dem Entfernen in der App: Stern wieder an",
+  "ersetze": [],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "docs:1.Q03:#u0f1:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "docs:2.Q01:Erbse|Gurke#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "sterne": {
+    "1.Q01": {
+     "wert": false,
+     "zeit": "2026-11-08T21:10:00.000Z"
+    }
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u0f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ]
+   },
+   "geaendert": [],
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {},
+   "sterne": [
+    "1.Q01"
+   ]
+  }
+ },
+ {
+  "name": "Antwort der App noch nicht in der .md, in Docs nur unsicher angehakt: Stern an, .md bekommt beides",
+  "ersetze": [
+   [
+    "- [ ] *unsicher*\n\n*2425-03",
+    "- [x] *unsicher*\n\n*2425-03"
+   ]
+  ],
+  "mdZeit": "2026-11-08T21:20:00.000Z",
+  "jetzt": "2026-11-08T21:25:00.000Z",
+  "fortschritt": {
+   "versuche": {
+    "1.Q01": [
+     {
+      "id": "docs:1.Q01:Apfel#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Apfel"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q03": [
+     {
+      "id": "docs:1.Q03:#u0f1:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [],
+      "unsicher": false,
+      "falsch": true,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "2.Q01": [
+     {
+      "id": "docs:2.Q01:Erbse|Gurke#u0f0:0",
+      "zeit": "2026-11-08T17:25:00.000Z",
+      "wahl": [
+       "Erbse",
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "docs",
+      "geaendert": "2026-11-08T21:00:00.000Z",
+      "geloescht": null
+     }
+    ],
+    "1.Q02": [
+     {
+      "id": "a1",
+      "zeit": "2026-11-08T21:15:00.000Z",
+      "wahl": [
+       "Gurke"
+      ],
+      "unsicher": false,
+      "falsch": false,
+      "quelle": "app",
+      "geaendert": "2026-11-08T21:15:00.000Z",
+      "geloescht": null
+     }
+    ]
+   },
+   "sterne": {
+    "1.Q01": {
+     "wert": true,
+     "zeit": "2026-11-08T17:25:00.000Z"
+    }
+   },
+   "md": {
+    "zeit": "2026-11-08T21:00:00.000Z",
+    "basis": {
+     "1.Q01": "Apfel#u1f0",
+     "1.Q03": "#u0f1",
+     "2.Q01": "Erbse|Gurke#u0f0"
+    },
+    "ueberschrieben": {}
+   }
+  },
+  "erwartet": {
+   "versuche": {
+    "1.Q01": [
+     "Apfel#u0f0"
+    ],
+    "1.Q03": [
+     "#u0f1"
+    ],
+    "2.Q01": [
+     "Erbse|Gurke#u0f0"
+    ],
+    "1.Q02": [
+     "Gurke#u0f0"
+    ]
+   },
+   "geaendert": [
+    "1.Q02"
+   ],
+   "zeilen": {
+    "- [x] Gurke": 2,
+    "- [x] *unsicher*": 2
+   },
+   "basis": {
+    "1.Q01": "Apfel#u1f0",
+    "1.Q02": "Gurke#u1f0",
+    "1.Q03": "#u0f1",
+    "2.Q01": "Erbse|Gurke#u0f0"
+   },
+   "ueberschrieben": {
+    "1.Q02": [
+     "#u1f0"
+    ]
+   },
+   "sterne": [
+    "1.Q01",
+    "1.Q02"
+   ]
   }
  }
 ]

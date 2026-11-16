@@ -42,16 +42,18 @@ def zaehlen(heute, fortschritt=None, md=MD):
 class Zaehlung(unittest.TestCase):
 
     def test_haken_aus_dem_lernskript_zaehlen(self):
-        # Lernskript: 1.1 Apfel unsicher, 1.2 leer, 1.3 falsch markiert, 2.1 Erbse und Gurke richtig, 2.2 Bruchstück
+        # Lernskript: 1.1 Apfel mit unsicher (Stern), 1.2 leer, 1.3 falsch markiert, 2.1 Erbse und Gurke richtig,
+        # 2.2 Bruchstück
         a = zaehlen('2026-11-09')
         self.assertEqual((a['gesamt'], a['bruchstuecke'], a['bearbeitet'], a['richtig']), (4, 1, 3, 1))
         self.assertEqual(a['stand'], (2, 1))
-        # [(..) for t in ..] = je Thema Rang, Anzahl, richtig, falsch, unsicher
-        self.assertEqual([(t['rang'], t['n'], t['richtig'], t['falsch'], t['unsicher']) for t in a['themen']],
+        # [(..) for t in ..] = je Thema Rang, Anzahl, richtig, falsch, Stern
+        self.assertEqual([(t['rang'], t['n'], t['richtig'], t['falsch'], t['stern']) for t in a['themen']],
                          [(1, 2, 0, ['1.3'], ['1.1']), (2, 1, 1, [], [])])
         self.assertEqual((a['faellig'], a['wartet'], a['naechster']), ([], 2, '2026-11-10'))
         self.assertEqual((a['tempo']['offen'], a['tempo']['tage'], a['tempo']['pro_tag']), (1, 89, 1))
         self.assertEqual((a['fehler'], a['abbruch']), ([], None))
+        self.assertEqual((a['falsch'], a['markiert']), (['1.3'], ['1.1']))
 
     def test_faellig_nach_termin(self):
         a = zaehlen('2026-11-10')
@@ -72,7 +74,7 @@ class Zaehlung(unittest.TestCase):
                    'ueberschrieben': {'2.Q01': ['Erbse|Gurke#u0f0']}}
         a = zaehlen('2026-11-09', f)
         self.assertEqual((a['bearbeitet'], a['richtig']), (4, 1))
-        self.assertEqual([(t['rang'], t['falsch'], t['unsicher']) for t in a['themen']],
+        self.assertEqual([(t['rang'], t['falsch'], t['stern']) for t in a['themen']],
                          [(1, ['1.3'], ['1.1']), (2, ['2.1'], [])])
         self.assertEqual(a['tempo']['offen'], 0)
 
@@ -92,7 +94,8 @@ class Zaehlung(unittest.TestCase):
         self.assertIn('Bearbeitet 3 von 4 Fragen (1 Bruchstück ohne Antwort nicht gezählt)', t)
         self.assertIn('Stand: Thema 2, Frage 1', t)
         self.assertIn('Sicher richtig: 1 (33 %)', t)
-        self.assertIn('Thema 1 Obst: 0 von 2 sicher richtig\n   falsch:   1.3\n   unsicher: 1.1', t)
+        self.assertIn('Thema 1 Obst: 0 von 2 sicher richtig\n   falsch:   1.3\n   Stern:    1.1', t)
+        self.assertIn('Sammlungen: Falsch 1 · Markiert 1', t)
         self.assertIn('Heute fällig: 1 · 1.3', t)
         self.assertIn('Wartet: 1 · nächster Termin Mi 11.11.2026', t)
 

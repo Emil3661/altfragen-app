@@ -6,7 +6,7 @@
   const M = Markdown;
   const D = Drive;
   const BEREICH = 'https://www.googleapis.com/auth/drive.file';
-  const VERSION = '1.2';
+  const VERSION = '1.3';
 
   // ---------- Ablage im Browser (IndexedDB) ----------
   // Schlüssel-Wert-Speicher: konfig, fragen:<fach>, fortschritt:<fach>. Größer als localStorage erlaubt.
@@ -241,7 +241,9 @@
     const fernText = await D.lesen(fk.fortschritt);
     if (!fernText.trim()) throw new Error('Fortschritt auf Drive ist leer, Abgleich ausgesetzt');
     const fern = JSON.parse(fernText);
-    const vorher = JSON.stringify(fa.fortschritt.versuche);
+    // Stand vorher, um am Ende zu sehen, ob der Abgleich Antworten oder Sterne verändert hat
+    const lernstand = () => JSON.stringify([fa.fortschritt.versuche, fa.fortschritt.sterne]);
+    const vorher = lernstand();
     // 2. Zusammenführen und hochladen, bevor die .md angefasst wird
     await hochladen(fk, K.zusammenfuehren(fa.fortschritt, fern));
     // 3. Lernskript abgleichen. Hat Docs zwischen Lesen und Schreiben gespeichert, von vorn (höchstens dreimal)
@@ -267,7 +269,7 @@
         break;
       }
     }
-    return neu || JSON.stringify(fa.fortschritt.versuche) !== vorher;
+    return neu || lernstand() !== vorher;
   }
   // Fortschritt hochladen und in den Speicher übernehmen. Die Vereinigung mit dem aktuellen Speicher läuft
   // ohne Unterbrechung, deshalb bleiben Antworten erhalten, die während des Hochladens dazukamen.
@@ -413,15 +415,8 @@
     pk.append(el('p', { class: 'unter klein', text: tp.offen ? `Erster Durchgang bis ${datum(tp.ziel)}: ${tp.offen} Fragen offen, etwa ${tp.proTag} pro Tag` : `Erster Durchgang vollständig` }));
     teile.push(pk);
 
-    // Fehlersammlung: alles, was je falsch oder unsicher war, bleibt hier, auch wenn es inzwischen sitzt
-    const fs = K.fehlerSammlung(d, f);
-    if (fs.length) {
-      const n = Math.min(fs.length, einstellungen.rundeGroesse);
-      teile.push(el('section', { class: 'karte' }, el('h2', { text: 'Fehlersammlung' }),
-        el('p', { text: `${fs.length} Fragen, die du je falsch oder unsicher hattest` + (fs.length > n ? `, diese Runde ${n}` : '') }),
-        el('p', { class: 'unter klein0', text: 'Bleiben drin, auch wenn sie später sitzen.' }),
-        knopf('Durchgehen', () => rundeStarten('fehler', fs.slice(0, n).map(x => x.frage.id)))));
-    }
+    // Sammlungen: Falsch füllt sich von selbst und bleibt, Markiert sind genau die Fragen mit Stern
+    teile.push(...sammlungsKarten(d, f));
 
     teile.push(el('div', { class: 'leiste' },
       knopf('Themen', () => zeige('themen')),
@@ -429,6 +424,26 @@
       knopf('Einstellungen', () => zeige('einstellungen'))));
     teile.push(statusZeile());
     return teile;
+  }
+
+  // Je Sammlung eine Karte mit Zahl und Knopf; leere Sammlungen erscheinen nicht.
+  // Eine Runde nimmt die ersten Einträge in der Reihenfolge der Sammlung, höchstens so viele wie eingestellt
+  function sammlungsKarten(d, f) {
+    const karten = [];
+    const karte = (titel, liste, text, unter) => {
+      if (!liste.length) return;
+      const n = Math.min(liste.length, einstellungen.rundeGroesse);
+      karten.push(el('section', { class: 'karte' }, el('h2', { text: titel }),
+        el('p', { text: text + (liste.length > n ? `, diese Runde ${n}` : '') }),
+        unter ? el('p', { class: 'unter klein0', text: unter }) : null,
+        knopf('Durchgehen', () => rundeStarten('sammlung', liste.slice(0, n).map(x => x.frage.id)))));
+    };
+    const fs = K.falschSammlung(d, f);
+    karte('Falsch', fs, `${fs.length} ${fs.length === 1 ? 'Frage' : 'Fragen'}, die du je falsch hattest`,
+      'Bleiben drin, auch wenn sie später sitzen. Zuletzt falsche zuerst.');
+    const ms = K.markiertSammlung(d, f);
+    karte('Markiert', ms, `${ms.length} ${ms.length === 1 ? 'Frage' : 'Fragen'} mit Stern`, null);
+    return karten;
   }
 
   function schritteZeile(st) {
@@ -513,11 +528,16 @@
     // 3 Fragen
     const fr = el('section', { class: 'karte' }, el('h3', { text: `3 · Fragen: ${st.beantwortet} von ${st.gesamt}` }));
     if (st.naechste) fr.append(knopf(st.beantwortet ? `Weiter mit Frage ${st.naechste.nr}` : 'Fragen starten', () => themaRunde(t, 'weiter'), 'haupt'));
-    // Je falsch oder unsicher, wie in der Fehlersammlung der Startseite
-    const schwach = K.fehlerSammlung(fa.daten, f).filter(x => x.thema.rang === t.rang);
-    if (schwach.length) fr.append(knopf(`Je falsch oder unsicher (${schwach.length})`, () => themaRunde(t, 'schwach')));
+    // Die Sammlungen der Startseite, auf dieses Thema beschränkt
+    const falsch = sammlungImThema(fa, t, 'falsch');
+    const markiert = sammlungImThema(fa, t, 'markiert');
+    if (falsch.length || markiert.length) {
+      fr.append(el('div', { class: 'leiste' },
+        falsch.length ? knopf(`Falsch (${falsch.length})`, () => themaRunde(t, 'falsch')) : null,
+        markiert.length ? knopf(`Markiert (${markiert.length})`, () => themaRunde(t, 'markiert')) : null));
+    }
     if (st.beantwortet) fr.append(knopf('Alle von vorn', () => themaRunde(t, 'alle'), 'leise'));
-    fr.append(el('p', { class: 'unter klein', text: 'Danach, wo es noch hakt: der passende Amboss-Abschnitt. Falsche und unsichere kommen nach zwei bis drei Tagen wieder.' }));
+    fr.append(el('p', { class: 'unter klein', text: 'Danach, wo es noch hakt: der passende Amboss-Abschnitt. Falsche kommen nach zwei Tagen wieder, richtige mit frisch gesetztem Stern nach drei.' }));
     const ls = lernskriptId();
     if (ls) fr.append(el('a', { class: 'verweis klein', href: `https://docs.google.com/document/d/${encodeURIComponent(ls)}/edit?rtpof=true`, target: '_blank', rel: 'noopener', text: 'Lernskript in Google Docs öffnen' }));
     teile.push(fr);
@@ -541,12 +561,16 @@
       const i = qs.findIndex(q => q.typ !== 'fragment' && K.wiederholung(q, fa.fortschritt.versuche[q.id], heute(), fa.daten.klausur).status === 'neu');
       pos = Math.max(0, i);
     }
-    if (wie === 'schwach') {
-      // Fehlersammlung dieses Themas: je falsch oder unsicher, in Reihenfolge des Themas
-      const drin = new Set(K.fehlerSammlung(fa.daten, fa.fortschritt).filter(x => x.thema.rang === t.rang).map(x => x.frage.id));
-      liste = qs.filter(q => drin.has(q.id));
+    if (wie === 'falsch' || wie === 'markiert') {
+      // Sammlung dieses Themas in Reihenfolge des Themas; Markiert auch mit Bruchstücken, die einen Stern haben
+      const drin = new Set(sammlungImThema(fa, t, wie).map(x => x.frage.id));
+      liste = t.fragen.filter(q => drin.has(q.id));
     }
-    rundeStarten(wie === 'schwach' ? 'wiederholen' : 'thema', liste.map(q => q.id), pos, t.rang);
+    rundeStarten(wie === 'falsch' || wie === 'markiert' ? 'sammlung' : 'thema', liste.map(q => q.id), pos, t.rang);
+  }
+  function sammlungImThema(fa, t, welche) {
+    const s = welche === 'falsch' ? K.falschSammlung(fa.daten, fa.fortschritt) : K.markiertSammlung(fa.daten, fa.fortschritt);
+    return s.filter(x => x.thema.rang === t.rang);
   }
 
   function rundeStarten(art, liste, pos = 0, rang = null, probe = null) {
@@ -594,9 +618,16 @@
     const teile = [];
     const kopfText = probe ? `${runde.probe.name} · ${runde.pos + 1} von ${runde.liste.length}` : `${t.rang} · Frage ${q.nr}` + (runde.art === 'thema' ? ` von ${t.fragen.length}` : ` · ${runde.pos + 1}/${runde.liste.length}`);
     teile.push(el('div', { class: 'kopf' }, el('button', { class: 'zurueck', onclick: rundeVerlassen, 'aria-label': 'Runde verlassen', text: '‹' }),
-      el('div', {}, el('div', { class: 'marke', text: kopfText }), probe ? null : el('div', { class: 'unter klein0', text: t.titel }))));
+      el('div', { class: 'kopf-text' }, el('div', { class: 'marke', text: kopfText }), probe ? null : el('div', { class: 'unter klein0', text: t.titel })),
+      sternKnopf(id)));
     if (probe) teile.push(probeUhr());
-    if (q.mal > 1 && !probe) teile.push(el('div', { class: 'marke', text: `${q.mal}× gefragt` }));
+    // Wie oft gefragt und wie oft schon falsch beantwortet; in der laufenden Probeklausur beides erst nach Abgabe
+    const nFalsch = K.falschZahl(q, f.versuche[id]);
+    const zeigen = !probe || runde.probe.abgegeben;
+    if (zeigen && (q.mal > 1 || nFalsch)) {
+      teile.push(el('div', { class: 'marke' }, q.mal > 1 ? `${q.mal}× gefragt` : null, q.mal > 1 && nFalsch ? ' · ' : null,
+        nFalsch ? el('span', { class: 'rot', text: `${nFalsch}× falsch` }) : null));
+    }
     teile.push(el('p', { class: 'stamm' }, mdZeile(q.stamm)));
     if (q.aussagen) teile.push(el('ol', { class: 'aussagen' }, ...q.aussagen.map(a => el('li', {}, mdZeile(a)))));
 
@@ -640,6 +671,21 @@
     return teile;
   }
 
+  // Stern oben rechts an jeder Frage, jederzeit an und aus. Tippen schaltet vom angezeigten Zustand um, auch wenn
+  // ein Abgleich im Hintergrund den Fortschritt inzwischen ersetzt hat; den Fortschritt deshalb erst beim Tippen holen
+  function sternKnopf(id) {
+    const an = K.sternAn(fach().fortschritt, id);
+    return el('button', {
+      class: 'stern' + (an ? ' an' : ''), 'aria-pressed': an ? 'true' : 'false', 'aria-label': an ? 'Stern entfernen' : 'Stern setzen',
+      onclick: () => {
+        const f = fach().fortschritt;
+        K.sternSetzen(f, id, !an, jetzt());
+        lokalSpeichern(aktivFach); abgleichPlanen(); zeige('frage', {}, true, true);
+      },
+      text: an ? '★' : '☆',
+    });
+  }
+
   function tippen(q, o, mehrere) {
     const id = q.id;
     const auswahl = runde.auswahl[id] || (runde.auswahl[id] = []);
@@ -653,11 +699,20 @@
     antworten(q, [o.t]);
   }
 
+  // Ein in dieser Runde vor der Antwort gesetzter Stern gilt für diese Antwort, nicht für die vorige:
+  // seine Zeit auf die der Antwort nachziehen (der Stern wirkt auf die letzte Antwort bis zu seiner Zeit)
+  function sternNachziehen(f, id, zeit) {
+    const s = K.sternVon(f, id);
+    if (s && s.wert && !s.alt && Date.parse(s.zeit) >= Date.parse(runde.start)) K.sternSetzen(f, id, true, zeit);
+  }
+
   // Antwort buchen: ein Versuch mit Quelle app, danach Lösung zeigen und den Abgleich planen.
   function antworten(q, wahl, merkmale = {}) {
     if (!wahl.length && !(q.typ === 'offen' || !q.optionen.length)) return;
     const fa = fach();
-    const v = K.versuchBuchen(fa.fortschritt, q.id, { wahl, ...merkmale }, jetzt(), geraet, runde.probe ? 'probe' : 'app');
+    const zeit = jetzt();
+    const v = K.versuchBuchen(fa.fortschritt, q.id, { wahl, ...merkmale }, zeit, geraet, runde.probe ? 'probe' : 'app');
+    sternNachziehen(fa.fortschritt, q.id, zeit);
     runde.versuch[q.id] = v.id;
     lokalSpeichern(fa.daten.fach);
     abgleichPlanen();
@@ -673,14 +728,14 @@
     }
     teile.push(el('div', { class: 'karte' }, el('p', {}, el('strong', { text: 'Lösung: ' }), mdZeile(q.loesung ? q.loesung.t : '')),
       q.loesung && q.loesung.w ? el('p', { class: 'unter' }, mdZeile(q.loesung.w)) : null));
+    // Unsicher gibt es nicht mehr als Antwort: Dafür steht der Stern oben rechts
     if (!v) {
       teile.push(el('div', { class: 'leiste' },
         knopf('Gewusst', () => antworten(q, [], {}), 'gut-knopf'),
-        knopf('Unsicher', () => antworten(q, [], { unsicher: true })),
         knopf('Falsch', () => antworten(q, [], { falsch: true }), 'schlecht-knopf')));
     } else {
-      const e = K.ergebnis(q, v);
-      teile.push(el('p', { class: 'urteil ' + (e === 'richtig' ? 'gut' : 'schlecht'), text: e === 'richtig' ? 'Gewusst' : e === 'unsicher' ? 'Unsicher' : 'Falsch' }));
+      const falsch = K.ergebnis(q, v) === 'falsch';
+      teile.push(el('p', { class: 'urteil ' + (falsch ? 'schlecht' : 'gut'), text: falsch ? 'Falsch' : 'Gewusst' }));
       teile.push(...zusatz(q));
     }
     teile.push(weiterLeiste(!!v));
@@ -700,20 +755,11 @@
   // Kleines E unten rechts: Option nicht aus dem Protokoll, ergänzt. Erst nach dem Lösen, sonst verrät es Falsche
   const ergMarke = () => el('span', { class: 'erg-marke', title: 'ergänzt, nicht im Protokoll', 'aria-label': 'ergänzt', text: 'E' });
 
-  // Lösung: Urteil, unsicher-Schalter, Extra-Fakten. Die Begründungen stehen schon an den Optionen.
+  // Lösung: Urteil und Extra-Fakten. Die Begründungen stehen schon an den Optionen; geraten markiert der Stern.
   function loesung(q, v) {
     const e = v ? K.ergebnis(q, v) : null;
-    const urteil = !e ? 'Nicht beantwortet' : e === 'falsch' ? 'Falsch' : (e === 'unsicher' ? 'Richtig, unsicher' : 'Richtig');
-    const teile = [el('p', { class: 'urteil ' + (e === 'richtig' || e === 'unsicher' ? 'gut' : 'schlecht'), text: urteil })];
-    if (e === 'richtig' || e === 'unsicher') {
-      // Versuch und Fortschritt erst beim Tippen holen, ein Abgleich kann beides inzwischen erneuert haben
-      teile.push(el('button', { class: 'knopf haken' + (v.unsicher ? ' an' : ''), onclick: () => {
-        const f = fach().fortschritt;
-        const aktuell = (f.versuche[q.id] || []).find(x => x.id === v.id);
-        if (aktuell) K.versuchAendern(f, q.id, v.id, { unsicher: !aktuell.unsicher }, jetzt());
-        lokalSpeichern(aktivFach); abgleichPlanen(); zeige('frage', {}, true, true);
-      }, text: (v.unsicher ? '☑' : '☐') + ' unsicher (richtig, aber geraten)' }));
-    }
+    const urteil = !e ? 'Nicht beantwortet' : e === 'falsch' ? 'Falsch' : 'Richtig';
+    const teile = [el('p', { class: 'urteil ' + (e && e !== 'falsch' ? 'gut' : 'schlecht'), text: urteil })];
     teile.push(...zusatz(q));
     return teile;
   }
@@ -776,20 +822,22 @@
   function bildRundeEnde() {
     if (!runde) return bildStart();
     const fa = fach();
-    const zahl = { richtig: 0, unsicher: 0, falsch: 0 };
+    // Richtig und falsch aus den Versuchen dieser Runde, dazu die Fragen der Runde, die jetzt einen Stern haben
+    const zahl = { richtig: 0, falsch: 0 };
     for (const [id, vid] of Object.entries(runde.versuch)) {
       const e = fa.ix.fragen.get(id);
       const v = (fa.fortschritt.versuche[id] || []).find(x => x.id === vid && !x.geloescht);
-      if (e && v) { const r = K.ergebnis(e.frage, v); if (r) zahl[r] += 1; }
+      if (e && v) { const r = K.ergebnis(e.frage, v); if (r) zahl[r === 'falsch' ? 'falsch' : 'richtig'] += 1; }
     }
-    const n = zahl.richtig + zahl.unsicher + zahl.falsch;
+    const n = zahl.richtig + zahl.falsch;
+    const sterne = runde.liste.filter(id => K.sternAn(fa.fortschritt, id)).length;
     const teile = [kopfOhneZurueck(runde.probe ? runde.probe.name : 'Runde beendet')];
     if (runde.probe) {
       const soll = Math.ceil(runde.liste.length * 0.6);
-      teile.push(el('p', { class: 'urteil ' + (zahl.richtig + zahl.unsicher >= soll ? 'gut' : 'schlecht'), text: `${zahl.richtig + zahl.unsicher} von ${runde.liste.length} richtig, bestanden ab ${soll}` }));
+      teile.push(el('p', { class: 'urteil ' + (zahl.richtig >= soll ? 'gut' : 'schlecht'), text: `${zahl.richtig} von ${runde.liste.length} richtig, bestanden ab ${soll}` }));
     }
-    teile.push(el('p', { text: `${n} beantwortet · ${zahl.richtig} sicher richtig · ${zahl.unsicher} unsicher · ${zahl.falsch} falsch` }));
-    if (zahl.falsch + zahl.unsicher) teile.push(el('p', { class: 'unter', text: 'Falsche kommen nach zwei Tagen wieder, unsichere nach drei.' }));
+    teile.push(el('p', { text: `${n} beantwortet · ${zahl.richtig} richtig · ${zahl.falsch} falsch` + (sterne ? ` · ${sterne} mit Stern` : '') }));
+    if (zahl.falsch || sterne) teile.push(el('p', { class: 'unter', text: 'Falsche kommen nach zwei Tagen wieder, richtige mit frisch gesetztem Stern nach drei.' }));
     if (runde.probe) teile.push(knopf('Lösungen ansehen', () => { runde.pos = 0; zeige('frage', {}, true); }));
     const rang = runde.rang;
     // Zurück über den Browserverlauf, damit die Zurück-Geste danach nicht ins Leere läuft
@@ -844,7 +892,9 @@
       const e = fa.ix.fragen.get(id);
       const wahl = runde.auswahl[id] || [];
       if (e && wahl.length && !runde.versuch[id]) {
-        runde.versuch[id] = K.versuchBuchen(fa.fortschritt, id, { wahl }, jetzt(), geraet, 'probe').id;
+        const zeit = jetzt();
+        runde.versuch[id] = K.versuchBuchen(fa.fortschritt, id, { wahl }, zeit, geraet, 'probe').id;
+        sternNachziehen(fa.fortschritt, id, zeit);
       }
     }
     runde.probe.abgegeben = true;

@@ -1,6 +1,6 @@
 # Altfragen-App
 
-Lern-App für Altfragen-Lernskripte, am Handy und am Laptop. Antwort antippen, Lösung danach, falsche und unsichere Fragen kommen nach zwei bis drei Tagen wieder, Plan je Thema bis zur Klausur.
+Lern-App für Altfragen-Lernskripte, am Handy und am Laptop. Antwort antippen, Lösung danach, falsche Fragen kommen nach zwei Tagen wieder, richtige mit frisch gesetztem Stern nach drei, Plan je Thema bis zur Klausur. Sammlungen „Falsch“ und „Markiert“ (Stern) für die letzte Woche.
 
 Das Repo enthält nur Code. Fragen und Lernstand liegen auf Google Drive und werden erst nach der Anmeldung geladen.
 

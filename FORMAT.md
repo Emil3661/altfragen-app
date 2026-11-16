@@ -108,19 +108,27 @@ EXTRA: <Fakt>
     ]
   },
   "schritte": {"1": {"meditricks": {"wert": "ja|keins|null", "zeit": "<ISO>"}, "kern": {"wert": "ja|null", "zeit": "<ISO>"}}},
+  "sterne": {"1.Q05": {"wert": true, "zeit": "<ISO>"}},
   "md": {"zeit": "<ISO>", "basis": {"1.Q05": "<Schlüssel>"}, "ueberschrieben": {"1.Q05": ["<Schlüssel>"]}}
 }
 ```
 
 - `wahl` enthält **Optionstexte**, nie Positionen. Verglichen wird über `normal()`
-- `falsch` nur bei offenen Fragen (Selbsteinschätzung). `unsicher` bei allen
+- `falsch` nur bei offenen Fragen (Selbsteinschätzung). `unsicher` nur noch aus früheren Fassungen, siehe Stern
 - `geloescht` = Zeitpunkt des Zurücknehmens. Gelöschte Versuche bleiben als Grabstein stehen, damit das Zusammenführen sie nicht zurückholt
-- Versuche aus Docs: `id` = `docs:<frageId>:<Schlüssel>:<Zahl der nicht gelöschten Versuche davor>`, damit zwei Geräte denselben Haken nicht doppelt anlegen, auch wenn sie die .md zu verschiedenen Zeiten lesen
-- Unbrauchbare Versuche (ohne `id`, ohne lesbare `zeit`, `wahl` keine Liste) werden beim Laden verworfen
+- Versuche aus Docs: `id` = `docs:<frageId>:<Schlüssel der Antwort, immer u0>:<Zahl der nicht gelöschten Versuche davor>`, damit zwei Geräte denselben Haken nicht doppelt anlegen, auch wenn sie die .md zu verschiedenen Zeiten lesen
+- Unbrauchbare Versuche (ohne `id`, ohne lesbare `zeit`, `wahl` keine Liste) und Sterne (`wert` nicht `true`/`false`, ohne lesbare `zeit`) werden beim Laden verworfen
+
+### Stern
+- Je Frage höchstens ein Eintrag in `sterne`, auch für Bruchstücke. Ausschalten schreibt `wert: false` mit neuer `zeit`, der Eintrag bleibt. Schlüssel nach Frage-ID sortiert
+- **Wirkung**: Ein gesetzter Stern gilt für die Antwort, die bei seiner `zeit` die letzte war (vor der ersten Antwort gesetzt: die erste). Ist sie richtig, zählt sie als `unsicher`. Spätere richtige Antworten rücken die Leiter normal vor; für „noch unsicher“ den Stern aus- und wieder einschalten. Setzt man ihn in einer Runde, bevor man antwortet, zieht die App seine `zeit` auf die Antwort nach
+- `unsicher` in Versuchen stammt aus früheren Fassungen der App; neue Versuche tragen immer `false`, im Ergebnis zählt das Merkmal für sich nicht mehr. **Übernahme**: Eine Frage ohne eigenen Eintrag mit einem nicht gelöschten Versuch mit `unsicher` bekommt `{wert: true, zeit: <zeit des letzten solchen Versuchs>, alt: true}`. Solche Einträge werden bei jedem Laden und Zusammenführen neu aus den Versuchen abgeleitet. Sie wirken genau wie das alte Merkmal: jede richtige Antwort mit `unsicher` zählt als `unsicher`, die Wiederholung bleibt wie vorher. Umschalten in App oder Docs ersetzt sie durch einen eigenen Eintrag
+- Fassungen der App vor dem Stern verwerfen `sterne` beim Zusammenführen. Die nächste neue Fassung, die sie noch gespeichert hat, schreibt sie zurück; übernommene leitet sie ohnehin neu ab
 
 ### Zusammenführen zweier Stände
 - `versuche`: Vereinigung über `id`. Gleiche `id` → der mit späterem `geaendert`. Trägt eine der beiden Fassungen `geloescht`, bleibt der Versuch gelöscht
 - `schritte`: je Feld der mit späterer `zeit`
+- `sterne`: eigene Einträge je Frage der mit späterer `zeit`, bei gleicher `zeit` der mit `wert: true`. Übernommene (`alt`) danach neu aus den vereinigten Versuchen. Ein Stand ohne `sterne` (ältere Fassung der App) löscht keinen
 - `md`: der ganze Block mit späterer `zeit`
 
 ## Text vergleichbar machen: `normal(text)`
@@ -143,12 +151,13 @@ Zeilenweise, `\r` am Zeilenende ignorieren:
 - `## `, `# ` oder `**Frage ` beendet die laufende Frage
 - Optionstext, der zu keiner Option der Frage passt → Fehler für diese Frage, sie wird beim Abgleich übersprungen und gemeldet. Nie über die Position zuordnen
 
-**Zustand** einer Frage in der .md: `{wahl: [Texte], unsicher, falsch}`. **Schlüssel**: `normal()` jeder gewählten Option (Groß- und Kleinschreibung bleibt), nach Unicode sortiert, mit `|` verbunden, dann `#` und `u0|u1`, `f0|f1`. Beispiel `Penicilline#u1f0`. **LEER** = `#u0f0`.
+**Zustand** einer Frage in der .md: `{wahl: [Texte], unsicher, falsch}`. Das Kästchen `unsicher` ist der Stern. **Schlüssel**: `normal()` jeder gewählten Option (Groß- und Kleinschreibung bleibt), nach Unicode sortiert, mit `|` verbunden, dann `#` und `u0|u1`, `f0|f1`. Beispiel `Penicilline#u1f0`. **LEER** = `#u0f0`.
 
 ## Ergebnis eines Versuchs
 
-- Mit Optionen: Menge `normal(wahl)` = Menge `normal(richtige Optionen)` → `unsicher` wenn markiert, sonst `richtig`. Sonst `falsch`. Leere Wahl → kein Versuch
-- Offen: `falsch` markiert → `falsch`, sonst `unsicher` markiert → `unsicher`, sonst `richtig` (gewusst)
+- Mit Optionen: Menge `normal(wahl)` = Menge `normal(richtige Optionen)` → `richtig`, sonst `falsch`. Leere Wahl → kein Versuch
+- Offen: `falsch` markiert → `falsch`, sonst `richtig` (gewusst)
+- **Stern**: Die Antwort, für die er gilt (siehe Stern), zählt als `unsicher`, wenn sie richtig ist; `falsch` bleibt `falsch`
 - Bruchstücke werden nicht beantwortet
 
 ## Wiederholung
@@ -158,7 +167,7 @@ Aus den nicht gelöschten Versuchen einer Frage, nach `zeit` aufsteigend. Tage =
 | Ergebnis | Folge |
 |---|---|
 | falsch | Leiter an, Stufe 0, fällig nach **2** Tagen |
-| unsicher | Leiter an, Stufe 0, fällig nach **3** Tagen |
+| unsicher (richtig mit Stern) | Leiter an, Stufe 0, fällig nach **3** Tagen |
 | richtig, Leiter aus | nichts fällig |
 | richtig, Leiter an | Stufe +1: Stufe 1 → **7** Tage, Stufe 2 → **21** Tage, Stufe 3 → Leiter aus |
 | richtig, Leiter an, vor dem Fälligkeitstag | nichts ändert sich, sofortiges Üben rückt die Leiter nicht vor |
@@ -167,7 +176,13 @@ Aus den nicht gelöschten Versuchen einer Frage, nach `zeit` aufsteigend. Tage =
 - Eine Frage gilt als beantwortet, sobald sie einen Versuch mit Ergebnis hat (für Plan, Tempo, „Weiter mit Frage“)
 - **Status**: `neu` (kein Versuch) · `sicher` (nichts fällig) · `faellig` (Fälligkeit ≤ heute) · `wartet`
 
-**Fehlersammlung**: jede Frage außer Bruchstücken mit mindestens einem nicht gelöschten Versuch, dessen Ergebnis `falsch` oder `unsicher` ist. Bleibt, auch wenn spätere Versuche richtig sind. Je Frage die Zahl der falschen und unsicheren Versuche und `zuletzt` = Zeit des letzten Versuchs mit Ergebnis. Reihenfolge: `zuletzt` aufsteigend (am längsten nicht geübte zuerst), bei Gleichstand Plan-Reihenfolge
+## Sammlungen
+
+Je Frage: Zahl der nicht gelöschten Versuche mit Ergebnis `falsch`, ob der letzte Versuch mit Ergebnis `falsch` war, `zuletzt` = Zeit des letzten Versuchs mit Ergebnis (keiner: nie geübt).
+
+- **Falsch**: jede Frage außer Bruchstücken mit mindestens einem falschen Versuch. Bleibt, auch wenn spätere Versuche richtig sind. Reihenfolge: zuerst die, deren letzter Versuch falsch war; darin und danach `zuletzt` aufsteigend (am längsten nicht geübte zuerst), bei Gleichstand Plan-Reihenfolge
+- **Markiert**: genau die Fragen mit Stern. Reihenfolge: nie geübte zuerst, dann `zuletzt` aufsteigend, bei Gleichstand Plan-Reihenfolge
+- Eine Frage kann in beiden stehen. Im Thema dieselben Sammlungen, beschränkt auf das Thema, in Reihenfolge des Themas
 
 ## Abgleich App ↔ Lernskript
 
@@ -178,18 +193,20 @@ Für jede beantwortbare Frage, mit `basis` und `ueberschrieben` aus `md`:
 3. Sonst:
    - `m` ist LEER → ignorieren. Haken entfernen geht nur in der App, weil Docs beim Speichern einer alten Fassung Haken der App löschen kann
    - `schluessel(m)` steht in `ueberschrieben` → alte Fassung aus Docs, ignorieren
-   - sonst Änderung in Docs übernehmen: Hat der letzte Versuch dieselbe Wahl, nur `unsicher`/`falsch` anpassen (`geaendert` neu). Sonst neuer Versuch, `quelle: docs`, `zeit` = `modifiedTime` der .md
-4. Soll = Zustand des letzten Versuchs (keiner: LEER)
+   - sonst Änderung in Docs übernehmen, Stern und Antwort getrennt, jeweils nur, was sich gegenüber `basis` geändert hat:
+     - **Stern**: `unsicher` in `m` angehakt, in `basis` nicht → Stern an, `zeit` = `modifiedTime` der .md. Ist der Eintrag in `sterne` jünger, bleibt er. Abgehakt wird ignoriert wie jeder entfernte Haken: Stern entfernen nur in der App
+     - **Antwort**: Optionen oder `falsch` anders als in `basis`. Mit Optionen, aber keine angehakt: nichts. Offene Frage ohne `falsch` und ohne Versuch: nichts. Hat der letzte Versuch dieselbe Wahl, nur `falsch` anpassen (`geaendert` neu). Sonst neuer Versuch, `quelle: docs`, `unsicher: false`, `zeit` = `modifiedTime` der .md
+4. Soll = Optionen und `falsch` des letzten Versuchs, `unsicher` = Stern (nichts davon: LEER)
 5. Weicht `m` vom Soll ab → Kästchen der Frage in der .md umschreiben, nur das Zeichen in `[ ]`. `schluessel(m)` vorn in `ueberschrieben`, ohne Doppelte, höchstens 3
 6. `basis` = `schluessel(Soll)`, LEER wird nicht gespeichert
 7. Fragen mit Fehler beim Lesen (unbekannte Option) bleiben unberührt: kein Import, kein Umschreiben, `basis` bleibt
-8. Ebenso Fragen mit Optionen, bei denen in der .md nur `unsicher` oder `falsch` angehakt ist, aber keine Option: Docs ist mitten in einer Antwort
+8. Ebenso Fragen mit Optionen, bei denen in der .md keine Option angehakt ist, aber `falsch`, oder `unsicher`, während `basis` eine Option enthält: Docs ist mitten in einer Antwort. Sonst ist ein angehaktes `unsicher` allein der Stern
 9. Neuer md-Text nur, wenn er sich vom gelesenen unterscheidet
 
 **Schutz**
 - Reihenfolge je Fach: Fortschritt holen und zusammenführen → Fortschritt hochladen → .md lesen und abgleichen → `modifiedTime` der .md erneut prüfen, bei Abweichung von vorn (höchstens dreimal) → .md hochladen → Fortschritt mit neuem md-Block hochladen
 - `basis` und `ueberschrieben` gelten erst, wenn die .md erfolgreich hochgeladen ist
 - Abgeglichen wird nur ein Stand, der vorher mit dem Fortschritt auf Drive zusammengeführt wurde. Ist der nicht lesbar oder leer, unterbleibt der Abgleich
-- Würde ein Abgleich bei mehr als 5 Fragen alle Haken entfernen, für die es in der App keinen Versuch gibt (auch keinen zurückgenommenen), bricht er ab und nennt sie. Die .md bleibt dann unverändert
+- Würde ein Abgleich bei mehr als 5 Fragen, zu denen die App keinen Versuch kennt (auch keinen zurückgenommenen), eine Antwort aus der .md entfernen oder sie ganz leeren, ohne dass es einen Eintrag in `sterne` gibt, bricht er ab und nennt sie. Die .md bleibt dann unverändert
 
-**Bekannte Grenze:** Ob ein Stand aus Docs eine alte Fassung ist, erkennt der Abgleich nur an Ständen, die die App selbst überschrieben hat. Wählt man in Docs bewusst genau die Antwort wieder, die eine Wiederholung in der App ersetzt hat, setzt die App ihre zurück. Speichert eine veraltete Docs-Sitzung einen früheren Docs-Stand, wird er als neuer Versuch übernommen
+**Bekannte Grenze:** Ob ein Stand aus Docs eine alte Fassung ist, erkennt der Abgleich nur an Ständen, die die App selbst überschrieben hat. Wählt man in Docs bewusst genau die Antwort wieder, die eine Wiederholung in der App ersetzt hat, setzt die App ihre zurück. Speichert eine veraltete Docs-Sitzung einen früheren Docs-Stand, wird er als neuer Versuch übernommen. Für den Stern heißt das: Hat die App ihn bei unveränderter Antwort ausgeschaltet, wird `unsicher` in Docs erst wieder übernommen, wenn sich die Antwort ändert

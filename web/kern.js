@@ -3,7 +3,6 @@
 // Plan und der abgeglichene Stand. Regeln und Formate: FORMAT.md im Repo.
 const Kern = (() => {
   const LEER = '#u0f0';
-  const LEER_Z = Object.freeze({ wahl: [], unsicher: false, falsch: false });
   const SCHUTZ_GELEERT = 5;
 
   // ---------- Text vergleichbar machen ----------
@@ -31,6 +30,12 @@ const Kern = (() => {
 
   function zustandAus(v) {
     return { wahl: [...(v.wahl || [])], unsicher: !!v.unsicher, falsch: !!v.falsch };
+  }
+
+  // Schlüssel wieder zerlegen: Teil der Optionen, Merkmal unsicher, Merkmal falsch.
+  // Die letzten fünf Zeichen haben immer die Form "#u0f0", davor stehen die Optionen.
+  function teile(k) {
+    return { wahl: k.slice(0, -5), unsicher: k.slice(-3, -2) === '1', falsch: k.slice(-1) === '1' };
   }
 
   // ---------- Fragendaten erschließen ----------
@@ -129,19 +134,16 @@ const Kern = (() => {
   }
 
   // ---------- Ergebnis eines Versuchs ----------
-  // 'richtig', 'unsicher', 'falsch' oder null, wenn der Versuch nichts aussagt (leere Wahl).
+  // 'richtig', 'falsch' oder null, wenn der Versuch nichts aussagt (leere Wahl). Das Merkmal unsicher älterer
+  // Versuche zählt hier nicht mehr, es ist beim Laden zum Stern geworden; 'unsicher' entsteht nur über den Stern.
   function ergebnis(q, v) {
     if (q.typ === 'fragment') return null;
-    if (q.typ === 'offen' || !q.optionen.length) {
-      if (v.falsch) return 'falsch';
-      return v.unsicher ? 'unsicher' : 'richtig';
-    }
+    if (q.typ === 'offen' || !q.optionen.length) return v.falsch ? 'falsch' : 'richtig';
     const wahl = new Set((v.wahl || []).map(normal));
     if (!wahl.size) return null;
     const soll = new Set(q.optionen.filter(o => o.richtig).map(o => normal(o.t)));
     const gleich = wahl.size === soll.size && [...wahl].every(x => soll.has(x));
-    if (!gleich) return 'falsch';
-    return v.unsicher ? 'unsicher' : 'richtig';
+    return gleich ? 'richtig' : 'falsch';
   }
 
   // ---------- Kalendertage in Berliner Zeit ----------
@@ -168,21 +170,59 @@ const Kern = (() => {
     return vs.length ? vs[vs.length - 1] : null;
   }
 
+  // ---------- Stern ----------
+  // Je Frage {wert: true|false, zeit}, unabhängig von den Versuchen. Ausschalten bleibt als wert false stehen,
+  // damit das Zusammenführen einen Stern von einem anderen Gerät nicht zurückholt.
+  function sternAn(f, id) {
+    const s = f.sterne && f.sterne[id];
+    return !!(s && s.wert);
+  }
+  // Eintrag {wert, zeit} oder null, für wiederholung() und ergebnisse()
+  function sternVon(f, id) {
+    return (f.sterne && f.sterne[id]) || null;
+  }
+  function sternSetzen(f, id, wert, jetzt) {
+    (f.sterne || (f.sterne = {}))[id] = { wert: !!wert, zeit: jetzt };
+  }
+
+  // Versuche mit Ergebnis nach Zeit, als [{v, e}]. Ein gesetzter Stern wirkt wie früher das Merkmal unsicher auf
+  // genau eine Antwort: die letzte, die es beim Setzen gab (vor der ersten Antwort gesetzt: die erste). Ist sie
+  // richtig, zählt sie als 'unsicher'; spätere richtige Antworten rücken die Leiter normal vor.
+  // Ein aus dem alten Merkmal übernommener Stern (alt) wirkt genau wie früher: jede richtige Antwort mit unsicher.
+  function ergebnisse(q, versuche, stern) {
+    const vs = gueltige(versuche).map(v => ({ v, e: ergebnis(q, v) })).filter(x => x.e);
+    if (!stern || !stern.wert || !vs.length) return vs;
+    if (stern.alt) {
+      for (const x of vs) if (x.v.unsicher && x.e === 'richtig') x.e = 'unsicher';
+      return vs;
+    }
+    const t = Date.parse(stern.zeit);
+    let ziel = vs[0];
+    for (const x of vs) if (Date.parse(x.v.zeit) <= t) ziel = x;
+    if (ziel.e === 'richtig') ziel.e = 'unsicher';
+    return vs;
+  }
+  // Wie oft eine Frage falsch beantwortet wurde, zurückgenommene Versuche ausgenommen
+  function falschZahl(q, versuche) {
+    return gueltige(versuche).filter(v => ergebnis(q, v) === 'falsch').length;
+  }
+
   // ---------- Wiederholung ----------
-  // Leiter wie in FORMAT.md: falsch 2 Tage, unsicher 3 Tage, danach richtig 7 und 21 Tage, dann fertig.
+  // Leiter wie in FORMAT.md: falsch 2 Tage, unsicher (Stern) 3 Tage, danach richtig 7 und 21 Tage, dann fertig.
   // Richtig vor dem Fälligkeitstag (sofort noch einmal geübt) rückt die Leiter nicht vor.
   // Fälligkeit höchstens zwei Tage vor der Klausur, aber nie vor dem Folgetag des Versuchs.
   const ABSTAND = { falsch: 2, unsicher: 3 };
   const LEITER = [7, 21];
-  function wiederholung(q, versuche, heute, klausur) {
-    const vs = gueltige(versuche).filter(v => ergebnis(q, v));
+  function wiederholung(q, versuche, heute, klausur, stern = null) {
+    const vs = ergebnisse(q, versuche, stern);
     if (!vs.length) return { status: 'neu', faellig: null, letztes: null };
     let leiter = false;
     let stufe = 0;
     let faellig = null;
     let e = null;
-    for (const v of vs) {
-      e = ergebnis(q, v);
+    for (const x of vs) {
+      const v = x.v;
+      e = x.e;
       const tag = tagVon(v.zeit);
       if (e !== 'richtig') {
         leiter = true; stufe = 0; faellig = plusTage(tag, ABSTAND[e]);
@@ -208,12 +248,31 @@ const Kern = (() => {
 
   // ---------- Fortschritt ----------
   function leererFortschritt(fach) {
-    return { format: 1, fach, versuche: {}, schritte: {}, md: { zeit: null, basis: {}, ueberschrieben: {} } };
+    return { format: 1, fach, versuche: {}, schritte: {}, sterne: {}, md: { zeit: null, basis: {}, ueberschrieben: {} } };
   }
-  // Fehlende Teile ergänzen und unbrauchbare Versuche (ohne ID, Zeit oder Wahl) verwerfen,
-  // damit eine beschädigte Datei die App nicht lahmlegt.
+  // Fehlende Teile ergänzen und unbrauchbare Versuche (ohne ID, Zeit oder Wahl) und Sterne (ohne wahr/falsch
+  // oder Zeit) verwerfen, damit eine beschädigte Datei die App nicht lahmlegt.
   function brauchbar(v) {
     return !!v && typeof v.id === 'string' && !Number.isNaN(Date.parse(v.zeit)) && Array.isArray(v.wahl);
+  }
+  function sternBrauchbar(s) {
+    return !!s && typeof s.wert === 'boolean' && !Number.isNaN(Date.parse(s.zeit));
+  }
+  // Übernahme des alten Merkmals: Eine Frage ohne eigenen Stern-Eintrag, die einen nicht zurückgenommenen Versuch
+  // mit unsicher hat, bekommt einen Stern {wert: true, zeit, alt: true}. Er wird jedes Mal neu aus den Versuchen
+  // abgeleitet, damit ein veralteter Stand ihn nach dem Zusammenführen nicht festhält. Ein Umschalten in der App
+  // oder in Docs schreibt einen eigenen Eintrag ohne alt, der von da an gilt.
+  // Schlüssel sortiert, damit derselbe Stand immer denselben Text ergibt
+  function sterneAbleiten(g) {
+    const neu = {};
+    for (const id of [...new Set([...Object.keys(g.sterne), ...Object.keys(g.versuche)])].sort()) {
+      const s = g.sterne[id];
+      if (s && !s.alt) { neu[id] = s; continue; }
+      const alt = gueltige(g.versuche[id]).filter(v => v.unsicher);
+      if (alt.length) neu[id] = { wert: true, zeit: alt[alt.length - 1].zeit, alt: true };
+    }
+    g.sterne = neu;
+    return g;
   }
   function vervollstaendigen(f, fach) {
     const leer = leererFortschritt(fach);
@@ -221,8 +280,10 @@ const Kern = (() => {
     g.versuche = Object.fromEntries(Object.entries(g.versuche || {})
       .map(([id, liste]) => [id, Array.isArray(liste) ? liste.filter(brauchbar) : []]));
     g.schritte = { ...(g.schritte || {}) };
+    g.sterne = Object.fromEntries(Object.entries(g.sterne && typeof g.sterne === 'object' ? g.sterne : {})
+      .filter(([, s]) => sternBrauchbar(s)));
     g.md = { ...leer.md, ...(g.md || {}) };
-    return g;
+    return sterneAbleiten(g);
   }
   function kopie(x) {
     return JSON.parse(JSON.stringify(x));
@@ -233,7 +294,8 @@ const Kern = (() => {
 
   // Zwei Stände vereinigen: Versuche über ihre ID, bei gleicher ID gewinnt das spätere "geaendert".
   // Ein Grabstein bleibt immer erhalten, auch wenn die andere Fassung später geändert wurde.
-  // Schritte je Feld, md-Block als Ganzes.
+  // Schritte je Feld, md-Block als Ganzes. Sterne: eigene Einträge je Frage nach "zeit" (bei gleicher Zeit gewinnt
+  // der gesetzte), übernommene danach neu aus den vereinigten Versuchen.
   function zusammenfuehren(a, b) {
     const fach = (a && a.fach) || (b && b.fach);
     a = vervollstaendigen(kopie(a || {}), fach);
@@ -261,15 +323,26 @@ const Kern = (() => {
         aus.schritte[rang][feld] = !x ? y : !y ? x : (spaeter(y.zeit, x.zeit) ? y : x);
       }
     }
+    for (const id of new Set([...Object.keys(a.sterne), ...Object.keys(b.sterne)])) {
+      const x = a.sterne[id] && !a.sterne[id].alt ? a.sterne[id] : null;
+      const y = b.sterne[id] && !b.sterne[id].alt ? b.sterne[id] : null;
+      const s = !x ? y : !y ? x : spaeter(y.zeit, x.zeit) ? y : spaeter(x.zeit, y.zeit) ? x : (x.wert ? x : y);
+      if (s) aus.sterne[id] = s;
+    }
     aus.md = spaeter(b.md.zeit, a.md.zeit) ? b.md : a.md;
-    return aus;
+    return sterneAbleiten(aus);
   }
 
   // ---------- Abgleich mit dem Lernskript ----------
-  // Drei-Wege-Vergleich je Frage zwischen basis (letzter gemeinsamer Stand), .md und letztem Versuch.
+  // Drei-Wege-Vergleich je Frage zwischen basis (letzter gemeinsamer Stand), .md und App.
+  // In der .md steht die App als Zustand: Optionen und falsch aus dem letzten Versuch, unsicher = Stern.
   // Rein: Fortschritt (schon mit Drive zusammengeführt), md-Text, modifiedTime der .md, erschlossene Daten, jetzt.
   // Raus: neuer Fortschritt, neuer md-Text oder null, geänderte Fragen, Lesefehler, Abbruchgrund oder null.
   // Bei Abbruch und wenn das Hochladen scheitert, gilt der alte md-Block weiter (mdAlt).
+  function sollZustand(f, id) {
+    const letzter = letzterVersuch(f, id);
+    return { wahl: letzter ? [...(letzter.wahl || [])] : [], unsicher: sternAn(f, id), falsch: !!(letzter && letzter.falsch) };
+  }
   function abgleichen(fortschritt, mdText, mdZeit, ix, jetzt) {
     const f = vervollstaendigen(kopie(fortschritt), ix.daten.fach);
     const mdAlt = kopie(f.md);
@@ -288,25 +361,28 @@ const Kern = (() => {
         continue;
       }
       const m = zustaende[q.id];
-      // Nur "unsicher" angehakt, aber noch keine Option: Docs ist mitten in einer Antwort, abwarten
-      if (q.optionen.length && !m.wahl.length && (m.unsicher || m.falsch)) {
+      const km = schluessel(m);
+      const kb = basis[q.id] || LEER;
+      // Merkmal angehakt, aber keine Option, obwohl im letzten gemeinsamen Stand eine angehakt war: Docs ist
+      // mitten in einer Antwort, abwarten. Sonst ist ein angehaktes unsicher allein der Stern
+      if (q.optionen.length && !m.wahl.length && (m.falsch || (m.unsicher && teile(kb).wahl !== ''))) {
         if (basis[q.id]) neueBasis[q.id] = basis[q.id];
         continue;
       }
-      const km = schluessel(m);
-      const kb = basis[q.id] || LEER;
       if (km !== kb && km !== LEER && !(ueb[q.id] || []).includes(km)) {
-        uebernehmen(f, q, m, mdZeit, jetzt);
+        uebernehmen(f, q, m, kb, mdZeit, jetzt);
       }
-      const letzter = letzterVersuch(f, q.id);
-      const s = letzter ? zustandAus(letzter) : LEER_Z;
+      const s = sollZustand(f, q.id);
       const ks = schluessel(s);
       if (ks !== km) {
         geaendert.push(q.id);
         soll[q.id] = s;
         neueUeb[q.id] = [km, ...(neueUeb[q.id] || []).filter(k => k !== km)].slice(0, 3);
-        // Geleert ohne Grabstein heißt: Die App kennt die Antwort gar nicht. Zurückgenommene zählen nicht
-        if (ks === LEER && !(f.versuche[q.id] || []).length) geleert.push(q);
+        // Haken entfernt, die die App gar nicht kennt: kein Versuch, auch kein zurückgenommener, und dabei geht eine
+        // Antwort aus der .md verloren oder die Frage wird ganz geleert, ohne dass es einen Stern-Eintrag gibt
+        const inMd = teile(km);
+        const unbekannt = !(f.versuche[q.id] || []).length;
+        if (unbekannt && (inMd.wahl !== '' || inMd.falsch || (ks === LEER && !f.sterne[q.id]))) geleert.push(q);
       }
       if (ks !== LEER) neueBasis[q.id] = ks;
     }
@@ -320,24 +396,37 @@ const Kern = (() => {
     return { fortschritt: f, mdNeu: neu !== mdText ? neu : null, geaendert, fehler, abbruch: null, mdAlt };
   }
 
-  // Änderung aus Docs als Versuch übernehmen. Gleiche Wahl wie zuletzt: nur die Merkmale anpassen.
-  // Die ID aus Frage, Zustand und Zahl der bisherigen Versuche ist auf jedem Gerät gleich,
-  // so legen zwei Geräte denselben Haken nicht doppelt an, auch wenn sie die .md zu verschiedenen Zeiten lesen.
-  function uebernehmen(f, q, m, mdZeit, jetzt) {
+  // Änderung aus Docs übernehmen, getrennt nach Stern und Antwort, jeweils nur, was sich gegenüber basis
+  // geändert hat. So löscht eine neue Antwort in Docs keinen Stern aus der App und umgekehrt.
+  // Stern: Kästchen unsicher neu angehakt setzt ihn, Zeit = modifiedTime der .md; ist der Eintrag in der App
+  // jünger, bleibt er. Abgehakt wird ignoriert wie jeder entfernte Haken: Eine veraltete Docs-Fassung soll keinen
+  // Stern still löschen, entfernt wird er nur in der App.
+  // Antwort: gleiche Wahl wie zuletzt passt nur falsch an, sonst neuer Versuch. Dessen ID aus Frage, Antwort und
+  // Zahl der bisherigen Versuche ist auf jedem Gerät gleich, so legen zwei Geräte denselben Haken nicht doppelt an,
+  // auch wenn sie die .md zu verschiedenen Zeiten lesen.
+  function uebernehmen(f, q, m, kb, mdZeit, jetzt) {
+    const b = teile(kb);
+    const zeit = mdZeit || jetzt;
+    if (m.unsicher && !b.unsicher) {
+      const s = f.sterne[q.id];
+      if (!s || (!s.wert && !spaeter(s.zeit, zeit))) f.sterne[q.id] = { wert: true, zeit };
+    }
+    const antwort = { wahl: [...m.wahl], unsicher: false, falsch: m.falsch };
+    if (teile(schluessel(antwort)).wahl === b.wahl && m.falsch === b.falsch) return;
+    // Frage mit Optionen ohne angehakte Option, offene Frage ohne falsch: Docs sagt nichts über eine Antwort
+    if (q.optionen.length ? !m.wahl.length : !m.falsch && !letzterVersuch(f, q.id)) return;
     const letzter = letzterVersuch(f, q.id);
     if (letzter && gleicheWahl(letzter.wahl, m.wahl)) {
-      if (!!letzter.unsicher !== m.unsicher || !!letzter.falsch !== m.falsch) {
-        letzter.unsicher = m.unsicher;
+      if (!!letzter.falsch !== m.falsch) {
         letzter.falsch = m.falsch;
         letzter.geaendert = jetzt;
       }
       return;
     }
-    const zeit = mdZeit || jetzt;
     const liste = f.versuche[q.id] || (f.versuche[q.id] = []);
-    const id = `docs:${q.id}:${schluessel(m)}:${gueltige(liste).length}`;
+    const id = `docs:${q.id}:${schluessel(antwort)}:${gueltige(liste).length}`;
     if (liste.some(v => v.id === id)) return;
-    liste.push({ id, zeit, wahl: [...m.wahl], unsicher: m.unsicher, falsch: m.falsch, quelle: 'docs', geaendert: jetzt, geloescht: null });
+    liste.push({ id, zeit, ...antwort, quelle: 'docs', geaendert: jetzt, geloescht: null });
   }
 
   function gleicheWahl(a, b) {
@@ -424,7 +513,7 @@ const Kern = (() => {
     for (const q of t.fragen) {
       if (q.typ === 'fragment') continue;
       st.gesamt += 1;
-      const w = wiederholung(q, f.versuche[q.id], heute, klausur);
+      const w = wiederholung(q, f.versuche[q.id], heute, klausur, sternVon(f, q.id));
       if (w.status === 'neu') { if (!st.naechste) st.naechste = q; continue; }
       st.beantwortet += 1;
       st[w.letztes] += 1;
@@ -471,29 +560,52 @@ const Kern = (() => {
     planListe(daten).forEach((p, pos) => {
       for (const q of p.thema.fragen) {
         if (q.typ === 'fragment') continue;
-        const w = wiederholung(q, f.versuche[q.id], heute, daten.klausur);
+        const w = wiederholung(q, f.versuche[q.id], heute, daten.klausur, sternVon(f, q.id));
         if (w.status === 'faellig') aus.push({ frage: q, thema: p.thema, faellig: w.faellig, pos });
       }
     });
     return aus.sort((a, b) => (a.faellig < b.faellig ? -1 : a.faellig > b.faellig ? 1 : a.pos - b.pos));
   }
 
-  // Fehlersammlung: jede Frage, die je falsch oder unsicher beantwortet wurde, auch wenn sie inzwischen sitzt.
-  // Zurückgenommene Versuche zählen nicht. Reihenfolge: am längsten nicht geübte zuerst, dann nach Plan,
-  // damit mehrere kurze Runden nacheinander die ganze Sammlung abdecken.
-  // Raus: [{frage, thema, falsch: Anzahl, unsicher: Anzahl, zuletzt: ISO-Zeit des letzten Versuchs}]
-  function fehlerSammlung(daten, f) {
+  // ---------- Sammlungen ----------
+  // Je Frage: Zahl der falschen Versuche, ob der letzte falsch war, Zeit des letzten Versuchs (null = nie geübt)
+  // und Position des Themas im Plan. Zurückgenommene Versuche zählen nicht.
+  function sammelEintrag(q, t, f, pos) {
+    const vs = ergebnisse(q, f.versuche[q.id], null);
+    const letzter = vs.length ? vs[vs.length - 1] : null;
+    return { frage: q, thema: t, falsch: vs.filter(x => x.e === 'falsch').length, zuletztFalsch: !!letzter && letzter.e === 'falsch',
+      zuletzt: letzter ? letzter.v.zeit : null, pos };
+  }
+  // Am längsten nicht geübte zuerst (nie geübte ganz vorn), bei Gleichstand nach Plan.
+  // So decken mehrere kurze Runden nacheinander die ganze Sammlung ab
+  function nachUebung(a, b) {
+    const za = a.zuletzt ? Date.parse(a.zuletzt) : -Infinity;
+    const zb = b.zuletzt ? Date.parse(b.zuletzt) : -Infinity;
+    return (za < zb ? -1 : za > zb ? 1 : 0) || (a.pos - b.pos);
+  }
+
+  // Falsch: jede Frage, die je falsch beantwortet wurde, auch wenn sie inzwischen sitzt.
+  // Zuerst die, deren letzte Antwort falsch war, darin und danach am längsten nicht geübte zuerst.
+  // Raus: [{frage, thema, falsch: Anzahl, zuletztFalsch, zuletzt: ISO-Zeit des letzten Versuchs, pos}]
+  function falschSammlung(daten, f) {
     const aus = [];
     planListe(daten).forEach((p, pos) => {
       for (const q of p.thema.fragen) {
         if (q.typ === 'fragment') continue;
-        const vs = gueltige(f.versuche[q.id]).filter(v => ergebnis(q, v));
-        const zahl = { falsch: 0, unsicher: 0 };
-        for (const v of vs) { const e = ergebnis(q, v); if (e in zahl) zahl[e] += 1; }
-        if (zahl.falsch + zahl.unsicher) aus.push({ frage: q, thema: p.thema, ...zahl, zuletzt: vs[vs.length - 1].zeit, pos });
+        const x = sammelEintrag(q, p.thema, f, pos);
+        if (x.falsch) aus.push(x);
       }
     });
-    return aus.sort((a, b) => (Date.parse(a.zuletzt) - Date.parse(b.zuletzt)) || (a.pos - b.pos));
+    return aus.sort((a, b) => (b.zuletztFalsch - a.zuletztFalsch) || nachUebung(a, b));
+  }
+
+  // Markiert: genau die Fragen mit Stern, am längsten nicht geübte zuerst. Gleiche Felder wie falschSammlung.
+  function markiertSammlung(daten, f) {
+    const aus = [];
+    planListe(daten).forEach((p, pos) => {
+      for (const q of p.thema.fragen) if (sternAn(f, q.id)) aus.push(sammelEintrag(q, p.thema, f, pos));
+    });
+    return aus.sort(nachUebung);
   }
 
   // Nächster Termin, an dem wieder etwas fällig wird (für die Startseite).
@@ -501,17 +613,18 @@ const Kern = (() => {
     let min = null;
     for (const t of daten.themen) for (const q of t.fragen) {
       if (q.typ === 'fragment') continue;
-      const w = wiederholung(q, f.versuche[q.id], heute, daten.klausur);
+      const w = wiederholung(q, f.versuche[q.id], heute, daten.klausur, sternVon(f, q.id));
       if (w.status === 'wartet' && (!min || w.faellig < min)) min = w.faellig;
     }
     return min;
   }
 
   return {
-    LEER, normal, schluessel, zustandAus, erschliessen, lernskriptLesen, lernskriptSchreiben, ergebnis,
-    tagVon, plusTage, tageZwischen, gueltige, letzterVersuch, wiederholung, leererFortschritt, vervollstaendigen,
-    zusammenfuehren, abgleichen, versuchBuchen, versuchAendern, versuchZuruecknehmen, schrittSetzen, schrittWert,
-    planListe, themaStand, naechstesThema, tempo, faellige, naechsteFaelligkeit, mischen, fehlerSammlung,
+    LEER, normal, schluessel, zustandAus, erschliessen, lernskriptLesen, lernskriptSchreiben, ergebnis, ergebnisse,
+    falschZahl, tagVon, plusTage, tageZwischen, gueltige, letzterVersuch, wiederholung, leererFortschritt,
+    vervollstaendigen, zusammenfuehren, abgleichen, sollZustand, versuchBuchen, versuchAendern, versuchZuruecknehmen,
+    schrittSetzen, schrittWert, sternAn, sternVon, sternSetzen, planListe, themaStand, naechstesThema, tempo, faellige,
+    naechsteFaelligkeit, mischen, falschSammlung, markiertSammlung,
   };
 })();
 if (typeof module !== 'undefined') module.exports = Kern;

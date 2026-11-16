@@ -1,6 +1,6 @@
 /* Gestaltung für das Handy: große Tippflächen, helles und dunkles Schema nach Systemeinstellung. */
-:root { --grund: #f6f7f8; --flaeche: #ffffff; --text: #16202a; --leise: #5c6873; --linie: #d9dee3; --akzent: #0b6e6e; --akzent-text: #ffffff; --gut: #1a7f4b; --gut-grund: #e5f4ec; --schlecht: #b3372f; --schlecht-grund: #fbe9e7; --warn: #fff3d6; --warn-text: #5e4400; --wahl: #dff1f1; --auf: #ffffff; }
-@media (prefers-color-scheme: dark) { :root { --grund: #11161b; --flaeche: #1a2128; --text: #e8edf1; --leise: #9aa6b1; --linie: #2c353e; --akzent: #38b2ac; --akzent-text: #06201f; --gut: #4ecb8d; --gut-grund: #13301f; --schlecht: #ef7d74; --schlecht-grund: #3a1b18; --warn: #3a2f12; --warn-text: #f2d893; --wahl: #12302f; --auf: #0b1a12; } }
+:root { --stern: #c88a00; --grund: #f6f7f8; --flaeche: #ffffff; --text: #16202a; --leise: #5c6873; --linie: #d9dee3; --akzent: #0b6e6e; --akzent-text: #ffffff; --gut: #1a7f4b; --gut-grund: #e5f4ec; --schlecht: #b3372f; --schlecht-grund: #fbe9e7; --warn: #fff3d6; --warn-text: #5e4400; --wahl: #dff1f1; --auf: #ffffff; }
+@media (prefers-color-scheme: dark) { :root { --stern: #f2c14e; --grund: #11161b; --flaeche: #1a2128; --text: #e8edf1; --leise: #9aa6b1; --linie: #2c353e; --akzent: #38b2ac; --akzent-text: #06201f; --gut: #4ecb8d; --gut-grund: #13301f; --schlecht: #ef7d74; --schlecht-grund: #3a1b18; --warn: #3a2f12; --warn-text: #f2d893; --wahl: #12302f; --auf: #0b1a12; } }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--grund); color: var(--text); font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -50,8 +50,6 @@ p { margin: 0; }
 .urteil { font-weight: 700; font-size: 19px; }
 .urteil.gut { color: var(--gut); }
 .urteil.schlecht { color: var(--schlecht); }
-.haken { text-align: left; min-height: 44px; font-size: 15px; }
-.haken.an { border-color: var(--akzent); background: var(--wahl); }
 .hinweis { background: var(--warn); color: var(--warn-text); padding: 9px 11px; border-radius: 10px; font-size: 15px; }
 .uhr { font-weight: 700; font-size: 15px; text-align: right; }
 .md { font-size: 16px; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 6px; }
@@ -83,3 +81,7 @@ p { margin: 0; }
 .option { position: relative; }
 .option.mit-e { padding-right: 30px; }
 .erg-marke { position: absolute; right: 9px; bottom: 7px; font-size: 11px; font-weight: 700; line-height: 1; color: var(--leise); opacity: .75; }
+/* Kopf der Frage: Text nimmt den Platz, der Stern bleibt rechts und schrumpft nie */
+.kopf-text { flex: 1; min-width: 0; }
+.stern { flex: none; width: 44px; height: 44px; margin-left: auto; padding: 0; border: 0; background: transparent; font-size: 24px; line-height: 1; color: var(--leise); cursor: pointer; touch-action: manipulation; }
+.stern.an { color: var(--stern); }

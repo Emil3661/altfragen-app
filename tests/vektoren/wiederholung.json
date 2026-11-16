@@ -53,7 +53,108 @@
   "faellig": "2026-11-10"
  },
  {
-  "name": "unsicher, nach drei Tagen",
+  "name": "richtig mit Stern, nach drei Tagen",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "stern": "2026-11-08T10:01:00Z",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-11"
+ },
+ {
+  "name": "falsch mit Stern bleibt bei zwei Tagen",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "stern": "2026-11-08T10:01:00Z",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-10"
+ },
+ {
+  "name": "Stern ohne Versuch bleibt neu",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "stern": "2026-11-08T10:00:00Z",
+  "versuche": [],
+  "status": "neu",
+  "faellig": null
+ },
+ {
+  "name": "Stern vor der ersten Antwort wirkt auf die erste",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "stern": "2026-11-07T10:00:00Z",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-11"
+ },
+ {
+  "name": "Stern später auf eine alte richtige Antwort gesetzt, sofort fällig",
+  "frage": "1.Q01",
+  "heute": "2026-11-09",
+  "stern": "2026-11-09T12:00:00Z",
+  "versuche": [
+   {
+    "zeit": "2026-11-01T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-03T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "faellig",
+  "faellig": "2026-11-06"
+ },
+ {
+  "name": "altes Merkmal unsicher früherer Versuche zählt ohne Stern nicht",
+  "frage": "1.Q01",
+  "heute": "2026-11-12",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ],
+    "unsicher": true
+   },
+   {
+    "zeit": "2026-11-11T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "sicher",
+  "faellig": null
+ },
+ {
+  "name": "altes Merkmal unsicher ohne Stern zählt als richtig",
   "frage": "1.Q01",
   "heute": "2026-11-09",
   "versuche": [
@@ -65,8 +166,30 @@
     "unsicher": true
    }
   ],
+  "status": "sicher",
+  "faellig": null
+ },
+ {
+  "name": "Stern wirkt auf die Antwort beim Setzen, spätere richtige rücken vor",
+  "frage": "1.Q01",
+  "heute": "2026-11-12",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-11T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
   "status": "wartet",
-  "faellig": "2026-11-11"
+  "faellig": "2026-11-18",
+  "stern": "2026-11-08T10:01:00Z"
  },
  {
   "name": "Leiter Stufe 1",
@@ -115,6 +238,34 @@
   ],
   "status": "wartet",
   "faellig": "2026-12-08"
+ },
+ {
+  "name": "Stern auf der Leiter setzt zurück",
+  "frage": "1.Q01",
+  "heute": "2026-11-18",
+  "stern": "2026-11-17T10:01:00Z",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-17T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-20"
  },
  {
   "name": "Leiter durchlaufen",
@@ -275,6 +426,20 @@
   ],
   "status": "sicher",
   "faellig": null
+ },
+ {
+  "name": "offene Frage gewusst mit Stern",
+  "frage": "1.Q03",
+  "heute": "2026-11-09",
+  "stern": "2026-11-08T10:01:00Z",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": []
+   }
+  ],
+  "status": "wartet",
+  "faellig": "2026-11-11"
  },
  {
   "name": "Mehrfachauswahl unvollständig ist falsch",
