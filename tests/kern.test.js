@@ -33,14 +33,16 @@ for (const fall of lade('lesen.json')) {
   });
 }
 
-// ---------- Vektoren: Wiederholung ----------
-for (const fall of lade('wiederholung.json')) {
-  test(`wiederholung: ${fall.name}`, () => {
+// ---------- Vektoren: Ergebnis je Frage ----------
+// Beantwortet, Ergebnis der letzten Antwort und Zahl der falschen, aus allen Versuchen einer Frage
+for (const fall of lade('ergebnis.json')) {
+  test(`ergebnis: ${fall.name}`, () => {
     const q = ix.fragen.get(fall.frage).frage;
     const versuche = fall.versuche.map((v, i) => ({ id: 'v' + i, unsicher: false, falsch: false, geloescht: null, ...v }));
-    const w = K.wiederholung(q, versuche, fall.heute, daten.klausur, fall.stern ? { wert: true, zeit: fall.stern } : null);
-    assert.strictEqual(w.status, fall.status);
-    assert.strictEqual(w.faellig, fall.faellig);
+    const vs = K.ergebnisse(q, versuche);
+    assert.strictEqual(K.beantwortet(q, versuche), fall.beantwortet);
+    assert.strictEqual(vs.length ? vs[vs.length - 1].e : null, fall.letztes);
+    assert.strictEqual(K.falschZahl(q, versuche), fall.falsch);
   });
 }
 
@@ -157,7 +159,7 @@ test('Tempo und nächstes Thema', () => {
   assert.strictEqual(tp.tage, 5);
   assert.strictEqual(tp.offen, 4);
   assert.strictEqual(tp.proTag, 1);
-  const n = K.naechstesThema(daten, f, '2026-11-09');
+  const n = K.naechstesThema(daten, f);
   assert.strictEqual(n.thema.rang, 1);
   assert.strictEqual(n.stand.naechste.id, '1.Q01');
 });
@@ -166,9 +168,9 @@ test('Nächstes Thema, sobald alle Fragen einmal beantwortet sind, auch ohne Med
   const f = K.leererFortschritt('test');
   K.versuchBuchen(f, '1.Q01', { wahl: ['Banane'] }, '2026-11-09T10:00:00Z', 'g');
   K.versuchBuchen(f, '1.Q02', { wahl: ['Gurke'] }, '2026-11-09T10:01:00Z', 'g');
-  assert.strictEqual(K.naechstesThema(daten, f, '2026-11-09').thema.rang, 1);
+  assert.strictEqual(K.naechstesThema(daten, f).thema.rang, 1);
   K.versuchBuchen(f, '1.Q03', { wahl: [], unsicher: true }, '2026-11-09T10:02:00Z', 'g');
-  assert.strictEqual(K.naechstesThema(daten, f, '2026-11-09').thema.rang, 2);
+  assert.strictEqual(K.naechstesThema(daten, f).thema.rang, 2);
 });
 
 test('Docs-Escapes zählen als dieselbe Option', () => {
@@ -225,7 +227,7 @@ test('Stern: macht keine Frage beantwortet, zählt falsche Versuche ohne zurück
   const f = K.leererFortschritt('test');
   K.sternSetzen(f, '1.Q01', true, '2026-11-08T10:00:00Z');
   assert.strictEqual(K.tempo(daten, f, '2026-11-09').offen, 4);
-  assert.strictEqual(K.wiederholung(ix.fragen.get('1.Q01').frage, [], '2026-11-09', daten.klausur, stern(true, '2026-11-08T10:00:00Z')).status, 'neu');
+  assert.strictEqual(K.themaStand(daten.themen[0], f).beantwortet, 0);
   const vs = [appVersuch('a', '2026-11-08T10:00:00Z', ['Banane']), appVersuch('b', '2026-11-09T10:00:00Z', ['Apfel']),
     appVersuch('c', '2026-11-10T10:00:00Z', ['Banane']), appVersuch('d', '2026-11-11T10:00:00Z', ['Banane'], { geloescht: '2026-11-11T10:01:00Z' })];
   assert.strictEqual(K.falschZahl(ix.fragen.get('1.Q01').frage, vs), 2);
@@ -253,7 +255,6 @@ test('Stern: alte Basis mit unsicher am letzten Versuch und unveränderte .md er
 });
 
 test('Stern: ein veralteter Stand hält einen übernommenen Stern nach dem Zusammenführen nicht fest', () => {
-  const q = ix.fragen.get('1.Q01').frage;
   const x = appVersuch('x', '2026-11-01T10:00:00Z', ['Apfel']);
   const y = appVersuch('y', '2026-11-08T10:00:00Z', ['Apfel'], { unsicher: true });
   for (const drive of [{ ...y, unsicher: false, geaendert: '2026-11-08T12:00:00Z' }, { ...y, geloescht: '2026-11-08T12:00:00Z', geaendert: '2026-11-08T12:00:00Z' }]) {
@@ -261,31 +262,19 @@ test('Stern: ein veralteter Stand hält einen übernommenen Stern nach dem Zusam
     for (const [a, b] of [[veraltet, { versuche: { '1.Q01': [x, drive] } }], [{ versuche: { '1.Q01': [x, drive] } }, veraltet]]) {
       const g = K.zusammenfuehren(a, b);
       assert.strictEqual(K.sternAn(g, '1.Q01'), false);
-      assert.deepStrictEqual(K.wiederholung(q, g.versuche['1.Q01'], '2026-11-12', daten.klausur, K.sternVon(g, '1.Q01')), { status: 'sicher', faellig: null, letztes: 'richtig' });
     }
   }
 });
 
-test('Stern: übernommener Stern wirkt wie das alte Merkmal, auch bei gleicher Zeit und ohne Ergebnis', () => {
-  const q = ix.fragen.get('1.Q01').frage;
-  const faelle = [
-    [[appVersuch('a', '2026-11-08T10:00:00Z', ['Banane'], { unsicher: true }), appVersuch('b', '2026-11-08T10:00:00Z', ['Apfel'])], ['wartet', '2026-11-10']],
-    [[appVersuch('a', '2026-11-08T10:00:00Z', ['Apfel']), appVersuch('b', '2026-11-08T11:00:00Z', [], { unsicher: true })], ['sicher', null]],
-  ];
-  for (const [versuche, [status, faellig]] of faelle) {
-    const g = K.vervollstaendigen({ versuche: { '1.Q01': versuche } }, 'test');
-    const w = K.wiederholung(q, versuche, '2026-11-09', daten.klausur, K.sternVon(g, '1.Q01'));
-    assert.deepStrictEqual([w.status, w.faellig], [status, faellig]);
-  }
-});
-
-test('Stern: aus nimmt auch die Wirkung des alten Merkmals', () => {
-  const q = ix.fragen.get('1.Q01').frage;
+test('Ohne Wiederholung: altes Merkmal unsicher ändert kein Ergebnis, Stern aus nimmt die Frage aus Markiert', () => {
   let f = K.vervollstaendigen({ versuche: { '1.Q01': [appVersuch('a', '2026-11-08T10:00:00Z', ['Apfel'], { unsicher: true })] } }, 'test');
-  assert.strictEqual(K.wiederholung(q, f.versuche['1.Q01'], '2026-11-09', daten.klausur, K.sternVon(f, '1.Q01')).faellig, '2026-11-11');
+  const st = K.themaStand(daten.themen[0], f);
+  assert.deepStrictEqual([st.beantwortet, st.richtig, st.falsch], [1, 1, 0]);
+  assert.deepStrictEqual(K.markiertSammlung(daten, f).map(x => x.frage.id), ['1.Q01']);
   K.sternSetzen(f, '1.Q01', false, '2026-11-09T08:00:00Z');
   f = K.vervollstaendigen(f, 'test');
-  assert.strictEqual(K.wiederholung(q, f.versuche['1.Q01'], '2026-11-09', daten.klausur, K.sternVon(f, '1.Q01')).status, 'sicher');
+  assert.deepStrictEqual(K.markiertSammlung(daten, f), []);
+  assert.deepStrictEqual(Object.keys(f.versuche['1.Q01'][0]).sort(), ['falsch', 'geaendert', 'geloescht', 'id', 'quelle', 'unsicher', 'wahl', 'zeit']);
 });
 
 test('Schutz: hält auch an, wenn nur noch Sterne da sind und die Antworten aus der .md flögen', () => {
@@ -302,4 +291,12 @@ test('Schutz: hält auch an, wenn nur noch Sterne da sind und die Antworten aus 
   const r = K.abgleichen(f, zeilen.join('\n'), '2026-11-08T17:00:00Z', bix, '2026-11-08T21:00:00Z');
   assert.match(r.abbruch, /6 Fragen/);
   assert.strictEqual(r.mdNeu, null);
+});
+
+test('Thema: zählt die letzte Antwort nach Zeit, leere Wahl macht nichts beantwortet', () => {
+  const f = K.leererFortschritt('test');
+  f.versuche['1.Q01'] = [appVersuch('b', '2026-11-10T10:00:00Z', ['Apfel']), appVersuch('a', '2026-11-08T10:00:00Z', ['Banane'])];
+  f.versuche['1.Q02'] = [appVersuch('c', '2026-11-08T10:00:00Z', [])];
+  const st = K.themaStand(daten.themen[0], f);
+  assert.deepStrictEqual([st.gesamt, st.beantwortet, st.richtig, st.falsch, st.naechste.id, st.fertig], [3, 1, 1, 0, '1.Q02', false]);
 });

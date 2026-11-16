@@ -45,21 +45,14 @@ class Zaehlung(unittest.TestCase):
         # Lernskript: 1.1 Apfel mit unsicher (Stern), 1.2 leer, 1.3 falsch markiert, 2.1 Erbse und Gurke richtig,
         # 2.2 Bruchstück
         a = zaehlen('2026-11-09')
-        self.assertEqual((a['gesamt'], a['bruchstuecke'], a['bearbeitet'], a['richtig']), (4, 1, 3, 1))
+        self.assertEqual((a['gesamt'], a['bruchstuecke'], a['bearbeitet'], a['richtig']), (4, 1, 3, 2))
         self.assertEqual(a['stand'], (2, 1))
         # [(..) for t in ..] = je Thema Rang, Anzahl, richtig, falsch, Stern
         self.assertEqual([(t['rang'], t['n'], t['richtig'], t['falsch'], t['stern']) for t in a['themen']],
-                         [(1, 2, 0, ['1.3'], ['1.1']), (2, 1, 1, [], [])])
-        self.assertEqual((a['faellig'], a['wartet'], a['naechster']), ([], 2, '2026-11-10'))
+                         [(1, 2, 1, ['1.3'], ['1.1']), (2, 1, 1, [], [])])
         self.assertEqual((a['tempo']['offen'], a['tempo']['tage'], a['tempo']['pro_tag']), (1, 89, 1))
         self.assertEqual((a['fehler'], a['abbruch']), ([], None))
         self.assertEqual((a['falsch'], a['markiert']), (['1.3'], ['1.1']))
-
-    def test_faellig_nach_termin(self):
-        a = zaehlen('2026-11-10')
-        self.assertEqual((a['faellig'], a['wartet'], a['naechster']), (['1.3'], 1, '2026-11-11'))
-        a = zaehlen('2026-11-11')
-        self.assertEqual((a['faellig'], a['wartet'], a['naechster']), (['1.3', '1.1'], 0, None))
 
     def test_letzter_versuch_zaehlt(self):
         # App: 1.2 richtig, 2.1 später falsch beantwortet; die Docs-Haken von 2.1 sind älter
@@ -73,14 +66,14 @@ class Zaehlung(unittest.TestCase):
         f['md'] = {'zeit': '2026-11-08T20:40:00Z', 'basis': {'2.Q01': 'Tomate#u0f0'},
                    'ueberschrieben': {'2.Q01': ['Erbse|Gurke#u0f0']}}
         a = zaehlen('2026-11-09', f)
-        self.assertEqual((a['bearbeitet'], a['richtig']), (4, 1))
+        self.assertEqual((a['bearbeitet'], a['richtig']), (4, 2))
         self.assertEqual([(t['rang'], t['falsch'], t['stern']) for t in a['themen']],
                          [(1, ['1.3'], ['1.1']), (2, ['2.1'], [])])
         self.assertEqual(a['tempo']['offen'], 0)
 
     def test_ohne_lernskript_und_ohne_fortschritt(self):
         a = zaehlen('2026-11-09', md=None)
-        self.assertEqual((a['bearbeitet'], a['stand'], a['themen'], a['wartet']), (0, None, [], 0))
+        self.assertEqual((a['bearbeitet'], a['stand'], a['themen'], a['falsch'], a['markiert']), (0, None, [], [], []))
         self.assertEqual(a['tempo']['offen'], 4)
 
     def test_lesefehler_werden_gemeldet(self):
@@ -93,11 +86,10 @@ class Zaehlung(unittest.TestCase):
         t = auswerten.bericht(zaehlen('2026-11-10'), DATEN)
         self.assertIn('Bearbeitet 3 von 4 Fragen (1 Bruchstück ohne Antwort nicht gezählt)', t)
         self.assertIn('Stand: Thema 2, Frage 1', t)
-        self.assertIn('Sicher richtig: 1 (33 %)', t)
-        self.assertIn('Thema 1 Obst: 0 von 2 sicher richtig\n   falsch:   1.3\n   Stern:    1.1', t)
-        self.assertIn('Sammlungen: Falsch 1 · Markiert 1', t)
-        self.assertIn('Heute fällig: 1 · 1.3', t)
-        self.assertIn('Wartet: 1 · nächster Termin Mi 11.11.2026', t)
+        self.assertIn('Zuletzt richtig: 2 (66 %)', t)
+        self.assertIn('Thema 1 Obst: 1 von 2 zuletzt richtig\n   falsch:   1.3\n   Stern:    1.1', t)
+        self.assertIn('Sammlungen: ✗ 1 je falsch · ☆ 1 markiert', t)
+        self.assertNotIn('fällig', t)
 
 
 class Aufruf(unittest.TestCase):

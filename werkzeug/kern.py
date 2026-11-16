@@ -1,7 +1,7 @@
 """Lernlogik der Altfragen-App für die Werkzeuge, Gegenstück zu web/kern.js.
 
 Rein: Fragendaten (fragen-<fach>.json als Dictionary), Fortschritt, Text des Lernskripts.
-Raus: Zustände, Ergebnisse, Fälligkeiten, zusammengeführte und abgeglichene Stände.
+Raus: Zustände, Ergebnisse, Sammlungen, zusammengeführte und abgeglichene Stände.
 Regeln und Formate stehen in FORMAT.md, beide Seiten prüfen sich gegen tests/vektoren/.
 Nur Standardbibliothek. Aufruf als Modul: import kern (Ordner werkzeug im Suchpfad).
 Schreibweisen: [x for x in liste if bedingung] baut eine Liste, {..} ebenso eine Menge oder ein Dictionary,
@@ -197,8 +197,7 @@ def lernskript_schreiben(text, orte, soll):
 def ergebnis(frage, versuch):
     """'richtig', 'falsch' oder None, wenn der Versuch nichts aussagt (leere Wahl, Bruchstück).
 
-    Das Merkmal unsicher älterer Versuche zählt hier nicht mehr, es ist beim Laden zum Stern geworden;
-    'unsicher' entsteht nur über den Stern (ergebnisse).
+    Das Merkmal unsicher älterer Versuche zählt hier nicht, es ist beim Laden zum Stern geworden.
     """
     if frage['typ'] == 'fragment':
         return None
@@ -290,26 +289,15 @@ def stern_setzen(f, qid, wert, jetzt):
     f.setdefault('sterne', {})[qid] = {'wert': bool(wert), 'zeit': jetzt}
 
 
-def ergebnisse(frage, versuche, stern):
-    """Versuche mit Ergebnis nach Zeit als [(versuch, ergebnis)].
-
-    stern: Eintrag {wert, zeit, alt} oder None. Ein gesetzter Stern wirkt wie früher das Merkmal unsicher auf genau
-    eine Antwort: die letzte, die es beim Setzen gab (vor der ersten Antwort gesetzt: die erste). Ist sie richtig,
-    zählt sie als 'unsicher'; spätere richtige Antworten rücken die Leiter normal vor.
-    Ein aus dem alten Merkmal übernommener Stern (alt) wirkt genau wie früher: jede richtige Antwort mit unsicher.
-    """
+def ergebnisse(frage, versuche):
+    """Versuche mit Ergebnis nach Zeit als [(versuch, ergebnis)]; zurückgenommene und solche ohne Aussage fallen weg."""
     vs = [(v, ergebnis(frage, v)) for v in gueltige(versuche)]
-    vs = [(v, e) for v, e in vs if e]
-    if not (stern and stern.get('wert') and vs):
-        return vs
-    if stern.get('alt'):
-        return [(v, 'unsicher' if v.get('unsicher') and e == 'richtig' else e) for v, e in vs]
-    t = _ms(stern.get('zeit'))
-    # Index der letzten Antwort bis zum Setzen des Sterns, sonst 0 (die erste)
-    i = max((n for n, (v, _) in enumerate(vs) if _ms(v['zeit']) <= t), default=0)
-    if vs[i][1] == 'richtig':
-        vs[i] = (vs[i][0], 'unsicher')
-    return vs
+    return [(v, e) for v, e in vs if e]
+
+
+def beantwortet(frage, versuche):
+    """Mindestens ein Versuch mit Ergebnis (für Plan, Tempo, „Weiter mit Frage“)."""
+    return bool(ergebnisse(frage, versuche))
 
 
 def falsch_zahl(frage, versuche):
@@ -317,54 +305,9 @@ def falsch_zahl(frage, versuche):
     return sum(1 for v in gueltige(versuche) if ergebnis(frage, v) == 'falsch')
 
 
-# ---------- Wiederholung ----------
-
-ABSTAND = {'falsch': 2, 'unsicher': 3}
-LEITER = [7, 21]
-
-
-def _wiederholung(frage, versuche, heute, klausur, stern):
-    # Leiter über alle aussagekräftigen Versuche; liefert Status, Fälligkeit und das Ergebnis des letzten Versuchs
-    vs = ergebnisse(frage, versuche, stern)
-    if not vs:
-        return 'neu', None, None
-    leiter, stufe, faellig, e = False, 0, None, None
-    for v, e in vs:
-        tag = tag_von(v['zeit'])
-        if e != 'richtig':
-            leiter, stufe, faellig = True, 0, plus_tage(tag, ABSTAND[e])
-        elif leiter and faellig and tag < faellig:
-            # Richtig vor dem Fälligkeitstag (sofort noch einmal geübt) rückt die Leiter nicht vor
-            continue
-        elif leiter:
-            stufe += 1
-            if stufe <= len(LEITER):
-                faellig = plus_tage(tag, LEITER[stufe - 1])
-            else:
-                leiter, faellig = False, None
-        else:
-            faellig = None
-        # Höchstens zwei Tage vor der Klausur, aber nie vor dem Folgetag des Versuchs
-        if faellig and klausur:
-            faellig = min(faellig, plus_tage(klausur, -2))
-            faellig = max(faellig, plus_tage(tag, 1))
-    if faellig is None:
-        return 'sicher', None, e
-    return ('faellig' if heute >= faellig else 'wartet'), faellig, e
-
-
-def wiederholung(frage, versuche, heute, klausur, stern=None):
-    """Raus: (status, faellig). Status neu, sicher, faellig oder wartet; faellig als 'JJJJ-MM-TT' oder None.
-
-    stern: Eintrag {wert, zeit} oder None, Wirkung wie in ergebnisse().
-    """
-    status, faellig, _ = _wiederholung(frage, versuche, heute, klausur, stern)
-    return status, faellig
-
-
-def letztes_ergebnis(frage, versuche, stern=None):
-    """Ergebnis des letzten aussagekräftigen Versuchs mit Stern wie in ergebnisse(), oder None."""
-    vs = ergebnisse(frage, versuche, stern)
+def letztes_ergebnis(frage, versuche):
+    """Ergebnis des letzten aussagekräftigen Versuchs oder None."""
+    vs = ergebnisse(frage, versuche)
     return vs[-1][1] if vs else None
 
 
@@ -619,10 +562,9 @@ def tempo(daten, f, heute):
     """Erster Durchgang: offene Pflichtfragen bis sieben Tage vor der Klausur, daraus Fragen pro Tag."""
     ziel = plus_tage(daten['klausur'], -7)
     tage = max(1, tage_zwischen(heute, ziel) + 1)
-    # Zählt je Pflichtthema die Fragen ohne Bruchstücke, zu denen es noch keinen gültigen Versuch mit Ergebnis gibt;
-    # any(..) = wahr, wenn mindestens ein Versuch ein Ergebnis hat
+    # Zählt je Pflichtthema die Fragen ohne Bruchstücke, die noch nicht beantwortet sind
     offen = sum(1 for t, optional in plan_liste(daten) if not optional for q in t['fragen']
-                if q['typ'] != 'fragment' and not any(ergebnis(q, v) for v in gueltige(f['versuche'].get(q['id']))))
+                if q['typ'] != 'fragment' and not beantwortet(q, f['versuche'].get(q['id'])))
     return {'ziel': ziel, 'tage': tage, 'offen': offen, 'pro_tag': math.ceil(offen / tage),
             'bis_klausur': tage_zwischen(heute, daten['klausur'])}
 
@@ -630,7 +572,7 @@ def tempo(daten, f, heute):
 def _sammel_eintrag(q, t, f, pos):
     # Je Frage: Zahl der falschen Versuche, ob der letzte falsch war, Zeit des letzten Versuchs (None = nie geübt)
     # und Position des Themas im Plan. Zurückgenommene Versuche zählen nicht
-    vs = ergebnisse(q, f['versuche'].get(q['id']), None)
+    vs = ergebnisse(q, f['versuche'].get(q['id']))
     return {'frage': q, 'thema': t, 'falsch': sum(1 for _, e in vs if e == 'falsch'),
             'zuletzt_falsch': bool(vs) and vs[-1][1] == 'falsch', 'zuletzt': vs[-1][0]['zeit'] if vs else None,
             'pos': pos}

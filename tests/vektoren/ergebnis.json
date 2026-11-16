@@ -1,0 +1,407 @@
+[
+ {
+  "name": "ohne Versuch nicht beantwortet",
+  "frage": "1.Q01",
+  "versuche": [],
+  "beantwortet": false,
+  "letztes": null,
+  "falsch": 0
+ },
+ {
+  "name": "richtig",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 0
+ },
+ {
+  "name": "falsch",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "falsch",
+  "falsch": 1
+ },
+ {
+  "name": "altes Merkmal unsicher an früheren Versuchen ändert nichts",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ],
+    "unsicher": true
+   },
+   {
+    "zeit": "2026-11-11T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 0
+ },
+ {
+  "name": "altes Merkmal unsicher an richtiger Antwort bleibt richtig",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ],
+    "unsicher": true
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 0
+ },
+ {
+  "name": "falsch, dann richtig",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 1
+ },
+ {
+  "name": "falsch, dann zweimal richtig",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-17T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 1
+ },
+ {
+  "name": "falsch, dann dreimal richtig",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-17T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-12-08T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 1
+ },
+ {
+  "name": "falsch, richtig, falsch mit einer Option",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-17T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "falsch",
+  "falsch": 2
+ },
+ {
+  "name": "gelöschter Versuch zählt nicht",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ],
+    "geloescht": "2026-11-08T10:01:00Z"
+   }
+  ],
+  "beantwortet": false,
+  "letztes": null,
+  "falsch": 0
+ },
+ {
+  "name": "offene Frage falsch",
+  "frage": "1.Q03",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [],
+    "falsch": true
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "falsch",
+  "falsch": 1
+ },
+ {
+  "name": "offene Frage gewusst",
+  "frage": "1.Q03",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": []
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 0
+ },
+ {
+  "name": "Mehrfachauswahl unvollständig ist falsch",
+  "frage": "2.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Erbse"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "falsch",
+  "falsch": 1
+ },
+ {
+  "name": "Mehrfachauswahl vollständig, Reihenfolge egal",
+  "frage": "2.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Gurke",
+     "Erbse"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 0
+ },
+ {
+  "name": "Docs-Escapes in der Wahl",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Birne 3\\. Klasse \\= gut"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "falsch",
+  "falsch": 1
+ },
+ {
+  "name": "Versuche ungeordnet, es zählt die Zeit",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   },
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 1
+ },
+ {
+  "name": "falsch, Minuten später richtig",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-08T10:05:00Z",
+    "wahl": [
+     "Apfel"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 1
+ },
+ {
+  "name": "richtige Option mit Docs-Escapes und Sternchen",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "\\*Apfel\\*  "
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "richtig",
+  "falsch": 0
+ },
+ {
+  "name": "leere Wahl ist keine Antwort",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": []
+   }
+  ],
+  "beantwortet": false,
+  "letztes": null,
+  "falsch": 0
+ },
+ {
+  "name": "leere Wahl nach einer falschen Antwort zählt nicht als letzte",
+  "frage": "1.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Banane"
+    ]
+   },
+   {
+    "zeit": "2026-11-09T10:00:00Z",
+    "wahl": []
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "falsch",
+  "falsch": 1
+ },
+ {
+  "name": "falsch, richtig, falsch: zweimal falsch, zuletzt falsch",
+  "frage": "2.Q01",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "Tomate"
+    ]
+   },
+   {
+    "zeit": "2026-11-09T10:00:00Z",
+    "wahl": [
+     "Erbse",
+     "Gurke"
+    ]
+   },
+   {
+    "zeit": "2026-11-10T10:00:00Z",
+    "wahl": [
+     "Erbse"
+    ]
+   }
+  ],
+  "beantwortet": true,
+  "letztes": "falsch",
+  "falsch": 2
+ },
+ {
+  "name": "Bruchstück wird nie beantwortet",
+  "frage": "2.Q03",
+  "versuche": [
+   {
+    "zeit": "2026-11-08T10:00:00Z",
+    "wahl": [
+     "x"
+    ]
+   }
+  ],
+  "beantwortet": false,
+  "letztes": null,
+  "falsch": 0
+ }
+]

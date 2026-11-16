@@ -1,5 +1,5 @@
 // Lernlogik der Altfragen-App ohne Bildschirm und ohne Netz, deshalb einzeln testbar.
-// Rein: Fragendaten (fragen-<fach>.json), Fortschritt, Text des Lernskripts. Raus: Zustände, Fälligkeiten,
+// Rein: Fragendaten (fragen-<fach>.json), Fortschritt, Text des Lernskripts. Raus: Zustände, Sammlungen,
 // Plan und der abgeglichene Stand. Regeln und Formate: FORMAT.md im Repo.
 const Kern = (() => {
   const LEER = '#u0f0';
@@ -135,7 +135,7 @@ const Kern = (() => {
 
   // ---------- Ergebnis eines Versuchs ----------
   // 'richtig', 'falsch' oder null, wenn der Versuch nichts aussagt (leere Wahl). Das Merkmal unsicher älterer
-  // Versuche zählt hier nicht mehr, es ist beim Laden zum Stern geworden; 'unsicher' entsteht nur über den Stern.
+  // Versuche zählt hier nicht, es ist beim Laden zum Stern geworden.
   function ergebnis(q, v) {
     if (q.typ === 'fragment') return null;
     if (q.typ === 'offen' || !q.optionen.length) return v.falsch ? 'falsch' : 'richtig';
@@ -177,73 +177,21 @@ const Kern = (() => {
     const s = f.sterne && f.sterne[id];
     return !!(s && s.wert);
   }
-  // Eintrag {wert, zeit} oder null, für wiederholung() und ergebnisse()
-  function sternVon(f, id) {
-    return (f.sterne && f.sterne[id]) || null;
-  }
   function sternSetzen(f, id, wert, jetzt) {
     (f.sterne || (f.sterne = {}))[id] = { wert: !!wert, zeit: jetzt };
   }
 
-  // Versuche mit Ergebnis nach Zeit, als [{v, e}]. Ein gesetzter Stern wirkt wie früher das Merkmal unsicher auf
-  // genau eine Antwort: die letzte, die es beim Setzen gab (vor der ersten Antwort gesetzt: die erste). Ist sie
-  // richtig, zählt sie als 'unsicher'; spätere richtige Antworten rücken die Leiter normal vor.
-  // Ein aus dem alten Merkmal übernommener Stern (alt) wirkt genau wie früher: jede richtige Antwort mit unsicher.
-  function ergebnisse(q, versuche, stern) {
-    const vs = gueltige(versuche).map(v => ({ v, e: ergebnis(q, v) })).filter(x => x.e);
-    if (!stern || !stern.wert || !vs.length) return vs;
-    if (stern.alt) {
-      for (const x of vs) if (x.v.unsicher && x.e === 'richtig') x.e = 'unsicher';
-      return vs;
-    }
-    const t = Date.parse(stern.zeit);
-    let ziel = vs[0];
-    for (const x of vs) if (Date.parse(x.v.zeit) <= t) ziel = x;
-    if (ziel.e === 'richtig') ziel.e = 'unsicher';
-    return vs;
+  // Versuche mit Ergebnis nach Zeit, als [{v, e}]; zurückgenommene und solche ohne Aussage fallen weg
+  function ergebnisse(q, versuche) {
+    return gueltige(versuche).map(v => ({ v, e: ergebnis(q, v) })).filter(x => x.e);
+  }
+  // Beantwortet = mindestens ein Versuch mit Ergebnis (für Plan, Tempo, „Weiter mit Frage“)
+  function beantwortet(q, versuche) {
+    return ergebnisse(q, versuche).length > 0;
   }
   // Wie oft eine Frage falsch beantwortet wurde, zurückgenommene Versuche ausgenommen
   function falschZahl(q, versuche) {
     return gueltige(versuche).filter(v => ergebnis(q, v) === 'falsch').length;
-  }
-
-  // ---------- Wiederholung ----------
-  // Leiter wie in FORMAT.md: falsch 2 Tage, unsicher (Stern) 3 Tage, danach richtig 7 und 21 Tage, dann fertig.
-  // Richtig vor dem Fälligkeitstag (sofort noch einmal geübt) rückt die Leiter nicht vor.
-  // Fälligkeit höchstens zwei Tage vor der Klausur, aber nie vor dem Folgetag des Versuchs.
-  const ABSTAND = { falsch: 2, unsicher: 3 };
-  const LEITER = [7, 21];
-  function wiederholung(q, versuche, heute, klausur, stern = null) {
-    const vs = ergebnisse(q, versuche, stern);
-    if (!vs.length) return { status: 'neu', faellig: null, letztes: null };
-    let leiter = false;
-    let stufe = 0;
-    let faellig = null;
-    let e = null;
-    for (const x of vs) {
-      const v = x.v;
-      e = x.e;
-      const tag = tagVon(v.zeit);
-      if (e !== 'richtig') {
-        leiter = true; stufe = 0; faellig = plusTage(tag, ABSTAND[e]);
-      } else if (leiter && faellig && tag < faellig) {
-        continue;
-      } else if (leiter) {
-        stufe += 1;
-        if (stufe <= LEITER.length) faellig = plusTage(tag, LEITER[stufe - 1]);
-        else { leiter = false; faellig = null; }
-      } else {
-        faellig = null;
-      }
-      if (faellig && klausur) {
-        const grenze = plusTage(klausur, -2);
-        if (faellig > grenze) faellig = grenze;
-        const frueh = plusTage(tag, 1);
-        if (faellig < frueh) faellig = frueh;
-      }
-    }
-    const status = faellig === null ? 'sicher' : (heute >= faellig ? 'faellig' : 'wartet');
-    return { status, faellig, letztes: e };
   }
 
   // ---------- Fortschritt ----------
@@ -466,7 +414,7 @@ const Kern = (() => {
   }
 
   // ---------- Optionen neu mischen ----------
-  // Für Wiederholung und Probeklausur, damit keine gemerkte Position hilft. Fester Startwert aus dem Samen:
+  // Für Sammlungen und Probeklausur, damit keine gemerkte Position hilft. Fester Startwert aus dem Samen:
   // dieselbe Runde zeigt dieselbe Reihenfolge. Sammeloptionen (fest) bleiben am Ende.
   function mischen(optionen, samen) {
     let h = 2166136261;
@@ -507,18 +455,16 @@ const Kern = (() => {
     return liste;
   }
 
-  // Stand eines Themas: Zahlen je Status und Ergebnis des letzten Versuchs, Schritte, nächste offene Frage.
-  function themaStand(t, f, heute, klausur) {
-    const st = { gesamt: 0, beantwortet: 0, richtig: 0, falsch: 0, unsicher: 0, faellig: 0, wartet: 0, naechste: null };
+  // Stand eines Themas: beantwortete Fragen, Ergebnis der letzten Antwort je Frage, Schritte, nächste offene Frage.
+  function themaStand(t, f) {
+    const st = { gesamt: 0, beantwortet: 0, richtig: 0, falsch: 0, naechste: null };
     for (const q of t.fragen) {
       if (q.typ === 'fragment') continue;
       st.gesamt += 1;
-      const w = wiederholung(q, f.versuche[q.id], heute, klausur, sternVon(f, q.id));
-      if (w.status === 'neu') { if (!st.naechste) st.naechste = q; continue; }
+      const vs = ergebnisse(q, f.versuche[q.id]);
+      if (!vs.length) { if (!st.naechste) st.naechste = q; continue; }
       st.beantwortet += 1;
-      st[w.letztes] += 1;
-      if (w.status === 'faellig') st.faellig += 1;
-      if (w.status === 'wartet') st.wartet += 1;
+      st[vs[vs.length - 1].e] += 1;
     }
     st.meditricks = schrittWert(f, t.rang, 'meditricks');
     st.kern = schrittWert(f, t.rang, 'kern');
@@ -529,11 +475,11 @@ const Kern = (() => {
   }
 
   // Das Thema, an dem es weitergeht: das erste im Plan, das nicht fertig ist; optionale erst danach.
-  function naechstesThema(daten, f, heute) {
+  function naechstesThema(daten, f) {
     for (const nurPflicht of [true, false]) {
       for (const p of planListe(daten)) {
         if (nurPflicht && p.optional) continue;
-        const st = themaStand(p.thema, f, heute, daten.klausur);
+        const st = themaStand(p.thema, f);
         if (!st.fertig) return { ...p, stand: st };
       }
     }
@@ -548,30 +494,17 @@ const Kern = (() => {
     for (const p of planListe(daten)) {
       if (p.optional) continue;
       for (const q of p.thema.fragen) {
-        if (q.typ !== 'fragment' && !gueltige(f.versuche[q.id]).some(v => ergebnis(q, v))) offen += 1;
+        if (q.typ !== 'fragment' && !beantwortet(q, f.versuche[q.id])) offen += 1;
       }
     }
     return { ziel, tage, offen, proTag: Math.ceil(offen / tage), bisKlausur: tageZwischen(heute, daten.klausur) };
-  }
-
-  // Fällige Fragen über alle Themen, die am längsten fälligen zuerst, dann in Plan-Reihenfolge.
-  function faellige(daten, f, heute) {
-    const aus = [];
-    planListe(daten).forEach((p, pos) => {
-      for (const q of p.thema.fragen) {
-        if (q.typ === 'fragment') continue;
-        const w = wiederholung(q, f.versuche[q.id], heute, daten.klausur, sternVon(f, q.id));
-        if (w.status === 'faellig') aus.push({ frage: q, thema: p.thema, faellig: w.faellig, pos });
-      }
-    });
-    return aus.sort((a, b) => (a.faellig < b.faellig ? -1 : a.faellig > b.faellig ? 1 : a.pos - b.pos));
   }
 
   // ---------- Sammlungen ----------
   // Je Frage: Zahl der falschen Versuche, ob der letzte falsch war, Zeit des letzten Versuchs (null = nie geübt)
   // und Position des Themas im Plan. Zurückgenommene Versuche zählen nicht.
   function sammelEintrag(q, t, f, pos) {
-    const vs = ergebnisse(q, f.versuche[q.id], null);
+    const vs = ergebnisse(q, f.versuche[q.id]);
     const letzter = vs.length ? vs[vs.length - 1] : null;
     return { frage: q, thema: t, falsch: vs.filter(x => x.e === 'falsch').length, zuletztFalsch: !!letzter && letzter.e === 'falsch',
       zuletzt: letzter ? letzter.v.zeit : null, pos };
@@ -608,23 +541,12 @@ const Kern = (() => {
     return aus.sort(nachUebung);
   }
 
-  // Nächster Termin, an dem wieder etwas fällig wird (für die Startseite).
-  function naechsteFaelligkeit(daten, f, heute) {
-    let min = null;
-    for (const t of daten.themen) for (const q of t.fragen) {
-      if (q.typ === 'fragment') continue;
-      const w = wiederholung(q, f.versuche[q.id], heute, daten.klausur, sternVon(f, q.id));
-      if (w.status === 'wartet' && (!min || w.faellig < min)) min = w.faellig;
-    }
-    return min;
-  }
-
   return {
     LEER, normal, schluessel, zustandAus, erschliessen, lernskriptLesen, lernskriptSchreiben, ergebnis, ergebnisse,
-    falschZahl, tagVon, plusTage, tageZwischen, gueltige, letzterVersuch, wiederholung, leererFortschritt,
+    beantwortet, falschZahl, tagVon, plusTage, tageZwischen, gueltige, letzterVersuch, leererFortschritt,
     vervollstaendigen, zusammenfuehren, abgleichen, sollZustand, versuchBuchen, versuchAendern, versuchZuruecknehmen,
-    schrittSetzen, schrittWert, sternAn, sternVon, sternSetzen, planListe, themaStand, naechstesThema, tempo, faellige,
-    naechsteFaelligkeit, mischen, falschSammlung, markiertSammlung,
+    schrittSetzen, schrittWert, sternAn, sternSetzen, planListe, themaStand, naechstesThema, tempo, mischen,
+    falschSammlung, markiertSammlung,
   };
 })();
 if (typeof module !== 'undefined') module.exports = Kern;

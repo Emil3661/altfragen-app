@@ -1,6 +1,6 @@
 # Altfragen-App
 
-Lern-App für Altfragen-Lernskripte, am Handy und am Laptop. Antwort antippen, Lösung danach, falsche Fragen kommen nach zwei Tagen wieder, richtige mit frisch gesetztem Stern nach drei, Plan je Thema bis zur Klausur. Sammlungen „Falsch“ und „Markiert“ (Stern) für die letzte Woche.
+Lern-App für Altfragen-Lernskripte, am Handy und am Laptop. Antwort antippen, Lösung danach, Plan je Thema bis zur Klausur. Zum erneuten Üben die Sammlungen ✗ (je falsch) und ☆ (markiert), keine Wiederholung nach Zeitplan.
 
 Das Repo enthält nur Code. Fragen und Lernstand liegen auf Google Drive und werden erst nach der Anmeldung geladen.
 
@@ -11,7 +11,7 @@ Das Repo enthält nur Code. Fragen und Lernstand liegen auf Google Drive und wer
 | `web/` | Die App, ohne Build-Schritt: `kern.js` (Logik), `markdown.js`, `drive.js` (Anmeldung, Drive), `app.js` (Bildschirme), `sw.js` (offline) |
 | `werkzeug/` | Python: `bauen.py` erzeugt die Fragendatei aus den Rohdaten und prüft sie gegen das Lernskript, `veroeffentlichen.py` legt die App-Dateien auf Drive an, `auswerten.py` wertet den Lernstand aus |
 | `tests/` | `node --test tests/*.test.js` und `python -m unittest discover -s tests`, beide gegen dieselben Testvektoren in `tests/vektoren/` |
-| `FORMAT.md` | Datenformate und Regeln für Abgleich und Wiederholung |
+| `FORMAT.md` | Datenformate und Regeln für Abgleich, Stern und Sammlungen |
 
 ## Zugriff
 

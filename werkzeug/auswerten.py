@@ -1,10 +1,9 @@
-"""Auswertung eines Fachs: Stand, Quote je Thema, falsche Fragen und Sterne, Fälligkeiten, Sammlungen, Schritte, Tempo.
+"""Auswertung eines Fachs: Stand, Quote je Thema, falsche Fragen und Sterne, Sammlungen, Schritte, Tempo.
 
 Rein: fragen-<fach>.json (zuerst im App-Ordner auf Drive, sonst build/), fortschritt-<fach>.json aus dem App-Ordner
       (fehlt sie: leerer Stand) und das Lernskript. Der Abgleich mit dem Lernskript läuft nur im Speicher, damit
       Haken aus Google Docs mitzählen, die die App noch nicht übernommen hat. Es wird nichts geschrieben.
-Raus: knapper Bericht auf der Konsole. Fragen als Thema.Nr (Nummer im Lernskript), es zählt der letzte Versuch;
-      sicher richtig = zuletzt richtig und nicht durch den Stern unsicher.
+Raus: knapper Bericht auf der Konsole. Fragen als Thema.Nr (Nummer im Lernskript), es zählt der letzte Versuch.
 Aufruf: python werkzeug/auswerten.py mibi|innere [--md PFAD] [--fortschritt PFAD] [--fragen PFAD] [--heute JJJJ-MM-TT]
 Schreibweisen: [x for x in liste if bedingung] baut eine Liste, {..} ebenso eine Menge oder ein Dictionary,
 (..) einen Durchlauf ohne Zwischenliste; lambda v: ausdruck ist eine Funktion in einer Zeile, meist als
@@ -37,8 +36,8 @@ def datum(tag):
 def auswertung(daten, fortschritt, md_text=None, md_zeit=None, heute=None, jetzt=None):
     """Zählt den Stand eines Fachs. Rein: Fragendaten, Fortschritt, optional Text und Zeit des Lernskripts.
 
-    Raus: Dictionary mit gesamt, bruchstuecke, bearbeitet, richtig, stand, themen, faellig, wartet, naechster,
-    tempo, falsch, markiert, fehler, abbruch. Der Fortschritt wird nicht verändert.
+    Raus: Dictionary mit heute, gesamt, bruchstuecke, bearbeitet, richtig, stand, themen, tempo, falsch, markiert,
+    fehler, abbruch. Der Fortschritt wird nicht verändert.
     """
     jetzt = jetzt or iso_utc(datetime.now(UTC))
     heute = heute or kern.tag_von(jetzt)
@@ -49,9 +48,8 @@ def auswertung(daten, fortschritt, md_text=None, md_zeit=None, heute=None, jetzt
         ab = kern.abgleichen(f, md_text, md_zeit, daten, jetzt)
         f, fehler, abbruch = ab['fortschritt'], ab['fehler'], ab['abbruch']
 
-    # Je beantwortbare Frage in Lernskript-Reihenfolge: letztes Ergebnis, Stern und Wiederholungsstatus
-    marke, themen, stand, faellig, wartet = {}, [], None, [], []
-    pos = {t['rang']: i for i, (t, _) in enumerate(kern.plan_liste(daten))}
+    # Je beantwortbare Frage in Lernskript-Reihenfolge: letztes Ergebnis und Stern
+    marke, themen, stand = {}, [], None
     for t in daten['themen']:
         eintrag = {'rang': t['rang'], 'titel': t['titel'], 'n': 0, 'richtig': 0, 'falsch': [], 'stern': [],
                    'meditricks': ((f['schritte'].get(str(t['rang'])) or {}).get('meditricks') or {}).get('wert'),
@@ -60,25 +58,17 @@ def auswertung(daten, fortschritt, md_text=None, md_zeit=None, heute=None, jetzt
             marke[q['id']] = f'{t["rang"]}.{q["nr"]}'
             if q['typ'] == 'fragment':
                 continue
-            versuche = f['versuche'].get(q['id'])
-            # Stern-Eintrag {wert, zeit} oder None; er macht die Antwort, bei der er gesetzt wurde, zu unsicher
-            stern = f['sterne'].get(q['id'])
-            e = kern.letztes_ergebnis(q, versuche, stern)
+            e = kern.letztes_ergebnis(q, f['versuche'].get(q['id']))
             if e is None:
                 continue
             stand = (t['rang'], q['nr'])
             eintrag['n'] += 1
             if e == 'richtig':
                 eintrag['richtig'] += 1
-            elif e == 'falsch':
+            else:
                 eintrag['falsch'].append(marke[q['id']])
             if kern.stern_an(f, q['id']):
                 eintrag['stern'].append(marke[q['id']])
-            status, termin = kern.wiederholung(q, versuche, heute, daten['klausur'], stern)
-            if status == 'faellig':
-                faellig.append((termin, pos.get(t['rang'], 0), marke[q['id']]))
-            elif status == 'wartet':
-                wartet.append(termin)
         if eintrag['n']:
             themen.append(eintrag)
 
@@ -93,10 +83,6 @@ def auswertung(daten, fortschritt, md_text=None, md_zeit=None, heute=None, jetzt
         'richtig': sum(t['richtig'] for t in themen),
         'stand': stand,
         'themen': sorted(themen, key=lambda t: t['rang']),
-        # Fällige nach Termin, dann Plan-Reihenfolge; x[2] = Marke Thema.Nr
-        'faellig': [x[2] for x in sorted(faellig)],
-        'wartet': len(wartet),
-        'naechster': min(wartet) if wartet else None,
         'tempo': kern.tempo(daten, f, heute),
         # Sammlungen wie in der App, als Thema.Nr: Falsch (je falsch) und Markiert (Stern, auch unbeantwortete)
         'falsch': [marke[x['frage']['id']] for x in kern.falsch_sammlung(daten, f)],
@@ -114,19 +100,17 @@ def bericht(a, daten):
              + (f' ({n} {"Bruchstück" if n == 1 else "Bruchstücke"} ohne Antwort nicht gezählt)' if n else ''))
     if a['bearbeitet']:
         z.append(f'Stand: Thema {a["stand"][0]}, Frage {a["stand"][1]}')
-        z.append(f'Sicher richtig: {a["richtig"]} ({100 * a["richtig"] // a["bearbeitet"]} %)')
+        z.append(f'Zuletzt richtig: {a["richtig"]} ({100 * a["richtig"] // a["bearbeitet"]} %)')
     z.append('')
     for t in a['themen']:
-        z.append(f'Thema {t["rang"]} {t["titel"]}: {t["richtig"]} von {t["n"]} sicher richtig')
+        z.append(f'Thema {t["rang"]} {t["titel"]}: {t["richtig"]} von {t["n"]} zuletzt richtig')
         if t['falsch']:
             z.append('   falsch:   ' + ', '.join(t['falsch']))
         if t['stern']:
             z.append('   Stern:    ' + ', '.join(t['stern']))
     if a['themen']:
         z.append('')
-    z.append(f'Heute fällig: {len(a["faellig"])}' + (f' · {", ".join(a["faellig"])}' if a['faellig'] else ''))
-    z.append(f'Wartet: {a["wartet"]}' + (f' · nächster Termin {datum(a["naechster"])}' if a['naechster'] else ''))
-    z.append(f'Sammlungen: Falsch {len(a["falsch"])} · Markiert {len(a["markiert"])}')
+    z.append(f'Sammlungen: ✗ {len(a["falsch"])} je falsch · ☆ {len(a["markiert"])} markiert')
     if a['themen']:
         # Schritte je bearbeitetem Thema; None = noch nicht abgehakt
         anzeige = {'ja': 'ja', 'keins': 'keins', None: 'offen'}

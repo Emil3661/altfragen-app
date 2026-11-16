@@ -85,3 +85,7 @@ p { margin: 0; }
 .kopf-text { flex: 1; min-width: 0; }
 .stern { flex: none; width: 44px; height: 44px; margin-left: auto; padding: 0; border: 0; background: transparent; font-size: 24px; line-height: 1; color: var(--leise); cursor: pointer; touch-action: manipulation; }
 .stern.an { color: var(--stern); }
+/* Zahlenknöpfe der Sammlungen: Zeichen farbig, Zahl groß */
+.zahl { font-size: 22px; font-weight: 650; }
+.zahl-zeichen.falsch { color: var(--schlecht); }
+.zahl-zeichen.markiert { color: var(--stern); }

@@ -61,15 +61,15 @@ class Vektoren(unittest.TestCase):
                 self.assertEqual({k: kern.schluessel(z) for k, z in zustaende.items()}, fall['zustaende'])
                 self.assertEqual(fehler, fall['fehler'])
 
-    def test_wiederholung(self):
-        for fall in lade('wiederholung.json'):
+    def test_ergebnis(self):
+        for fall in lade('ergebnis.json'):
             with self.subTest(fall['name']):
                 # Fehlende Felder der Vektoren mit den Vorgaben ergänzen; {**a, **v} = a, überschrieben durch v
                 versuche = [{'id': f'v{i}', 'unsicher': False, 'falsch': False, 'geloescht': None, **v}
                             for i, v in enumerate(fall['versuche'])]
-                status, faellig = kern.wiederholung(frage(fall['frage']), versuche, fall['heute'], DATEN['klausur'],
-                                                    {'wert': True, 'zeit': fall['stern']} if fall.get('stern') else None)
-                self.assertEqual((status, faellig), (fall['status'], fall['faellig']))
+                q = frage(fall['frage'])
+                self.assertEqual((kern.beantwortet(q, versuche), kern.letztes_ergebnis(q, versuche), kern.falsch_zahl(q, versuche)),
+                                 (fall['beantwortet'], fall['letztes'], fall['falsch']))
 
     def test_sammlungen(self):
         for fall in lade('sammlung.json'):
@@ -413,7 +413,6 @@ class Stern(unittest.TestCase):
 
     def test_veralteter_stand_haelt_uebernommenen_stern_nicht_fest(self):
         # Auf Drive ist unsicher am Versuch y später abgehakt bzw. y zurückgenommen; ein Gerät hat noch die alte Fassung
-        q = frage('1.Q01')
         x = app_versuch('x', '2026-11-01T10:00:00Z', ['Apfel'])
         y = app_versuch('y', '2026-11-08T10:00:00Z', ['Apfel'], unsicher=True)
         for drive in (dict(y, unsicher=False, geaendert='2026-11-08T12:00:00Z'),
@@ -423,30 +422,17 @@ class Stern(unittest.TestCase):
                 for a, b in ((veraltet, {'versuche': {'1.Q01': [x, drive]}}), ({'versuche': {'1.Q01': [x, drive]}}, veraltet)):
                     g = kern.zusammenfuehren(a, b)
                     self.assertFalse(kern.stern_an(g, '1.Q01'))
-                    self.assertEqual(kern.wiederholung(q, g['versuche']['1.Q01'], '2026-11-12', DATEN['klausur'],
-                                                       g['sterne'].get('1.Q01')), ('sicher', None))
 
-    def test_uebernommener_stern_wirkt_wie_das_alte_merkmal(self):
-        # Gleiche Zeit (falsch mit unsicher, dann richtig) und unsicher an einem Versuch ohne Ergebnis: wie vorher
-        q = frage('1.Q01')
-        faelle = [([app_versuch('a', '2026-11-08T10:00:00Z', ['Banane'], unsicher=True),
-                    app_versuch('b', '2026-11-08T10:00:00Z', ['Apfel'])], ('wartet', '2026-11-10')),
-                  ([app_versuch('a', '2026-11-08T10:00:00Z', ['Apfel']),
-                    app_versuch('b', '2026-11-08T11:00:00Z', [], unsicher=True)], ('sicher', None))]
-        for versuche, soll in faelle:
-            g = kern.vervollstaendigen({'versuche': {'1.Q01': versuche}}, 'test')
-            self.assertEqual(kern.wiederholung(q, versuche, '2026-11-09', DATEN['klausur'], g['sterne'].get('1.Q01')), soll)
-
-    def test_stern_aus_nimmt_auch_das_alte_merkmal(self):
-        q = frage('1.Q01')
+    def test_ohne_wiederholung_aendert_das_alte_merkmal_kein_ergebnis(self):
+        # unsicher am Versuch zählt im Ergebnis nicht; Stern aus nimmt die Frage aus Markiert, der Versuch bleibt
         f = kern.vervollstaendigen({'versuche': {'1.Q01': [app_versuch('a', '2026-11-08T10:00:00Z', ['Apfel'], unsicher=True)]}},
                                    'test')
-        self.assertEqual(kern.wiederholung(q, f['versuche']['1.Q01'], '2026-11-09', DATEN['klausur'], f['sterne']['1.Q01']),
-                         ('wartet', '2026-11-11'))
+        self.assertEqual(kern.letztes_ergebnis(frage('1.Q01'), f['versuche']['1.Q01']), 'richtig')
+        self.assertEqual([x['frage']['id'] for x in kern.markiert_sammlung(DATEN, f)], ['1.Q01'])
         kern.stern_setzen(f, '1.Q01', False, '2026-11-09T08:00:00Z')
         f = kern.vervollstaendigen(f, 'test')
-        self.assertEqual(kern.wiederholung(q, f['versuche']['1.Q01'], '2026-11-09', DATEN['klausur'], f['sterne']['1.Q01']),
-                         ('sicher', None))
+        self.assertEqual(kern.markiert_sammlung(DATEN, f), [])
+        self.assertTrue(f['versuche']['1.Q01'][0]['unsicher'])
 
     def test_schutz_auch_wenn_nur_sterne_uebrig_sind(self):
         # Versuche verloren, eigene Sterne noch da: Die Antworten würden aus der .md entfernt, das hält an
@@ -494,8 +480,7 @@ class Stern(unittest.TestCase):
         f = kern.leerer_fortschritt('test')
         kern.stern_setzen(f, '1.Q01', True, '2026-11-08T10:00:00Z')
         self.assertEqual(kern.tempo(DATEN, f, '2026-11-09')['offen'], 4)
-        self.assertEqual(kern.wiederholung(frage('1.Q01'), [], '2026-11-09', DATEN['klausur'], stern(True, '2026-11-08T10:00:00Z')),
-                         ('neu', None))
+        self.assertFalse(kern.beantwortet(frage('1.Q01'), f['versuche'].get('1.Q01')))
 
     def test_neuer_versuch_aus_docs_traegt_kein_unsicher(self):
         r = kern.abgleichen(kern.leerer_fortschritt('test'), MD, '2026-11-08T17:25:00.000Z', DATEN,
