@@ -19,6 +19,8 @@ DRIVE_APP = 'G:/Meine Ablage/01 Studium/Organisation/Altfragen-App'
 _MIBI = 'G:/Meine Ablage/01 Studium/Fächer/Mikrobiologie/Teil 1 Klausur 2027'
 _INNERE = 'G:/Meine Ablage/01 Studium/Fächer/Innere/Teil 1 Klausur 2027'
 _GYN = 'G:/Meine Ablage/01 Studium/Fächer/Frauenheilkunde'
+_UMWELT = 'G:/Meine Ablage/01 Studium/Fächer/Umweltmedizin'
+_HUMGEN = 'G:/Meine Ablage/01 Studium/Fächer/Humangenetik'
 
 FAECHER = {
     'mibi': {
@@ -50,5 +52,16 @@ FAECHER = {
         'minuten': None,
         'ordner': 'C:/Users/joong/altfragen/gyn',
         'durchgang': '2027-01-07',
+    },
+    'umwelt': {
+        'name': 'Umweltmedizin',
+        'klausur': '2027-02-08',
+        'klausurInfo': '40 Fragen in 60 Minuten',
+        'plan': 'rang',
+        'lernskript': f'{_UMWELT}/Umweltmedizin — Lernskript.md',
+        'probeklausuren': [f'{_UMWELT}/Umweltmedizin — Probeklausur 1.md', f'{_UMWELT}/Umweltmedizin — Probeklausur 2.md'],
+        'minuten': 60,
+        'ordner': 'C:/Users/joong/altfragen/umwelt',
+        'durchgang': '2027-01-23',
     },
 }
