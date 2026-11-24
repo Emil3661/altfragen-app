@@ -6,7 +6,7 @@
   const M = Markdown;
   const D = Drive;
   const BEREICH = 'https://www.googleapis.com/auth/drive.file';
-  const VERSION = '1.5';
+  const VERSION = '1.6';
 
   // ---------- Ablage im Browser (IndexedDB) ----------
   // Schlüssel-Wert-Speicher: konfig, fragen:<fach>, fortschritt:<fach>. Größer als localStorage erlaubt.
@@ -731,12 +731,15 @@
     return teile;
   }
 
+  // Unter der Lösung: Wertung des Instituts deutlich und zuerst (darauf kann man in der Klausur anfechten),
+  // dann Extra-Fakten, übrige Hinweise (Protokollabweichung, Varianten, Quellen) klein und ohne Kasten
   function zusatz(q) {
     const teile = [];
+    for (const t of q.institut || []) teile.push(el('p', { class: 'institut' }, mdZeile(t)));
     if ((q.neu || []).length) {
       teile.push(el('div', { class: 'extra' }, el('strong', { text: 'Extra-Fakten' }), el('ul', {}, ...q.neu.map(n => el('li', {}, mdZeile(n))))));
     }
-    for (const h of q.hinweis || []) teile.push(el('p', { class: 'hinweis' }, el('strong', { text: 'Hinweis: ' }), mdZeile(h)));
+    for (const h of q.hinweis || []) teile.push(el('p', { class: 'hinweis' }, mdZeile(h)));
     if (q.ids) teile.push(el('p', { class: 'unter klein', text: q.ids }));
     return teile;
   }

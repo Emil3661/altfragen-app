@@ -1,6 +1,6 @@
 /* Gestaltung für das Handy: große Tippflächen, helles und dunkles Schema nach Systemeinstellung. */
-:root { --stern: #c88a00; --grund: #f6f7f8; --flaeche: #ffffff; --text: #16202a; --leise: #5c6873; --linie: #d9dee3; --akzent: #0b6e6e; --akzent-text: #ffffff; --gut: #1a7f4b; --gut-grund: #e5f4ec; --schlecht: #b3372f; --schlecht-grund: #fbe9e7; --warn: #fff3d6; --warn-text: #5e4400; --wahl: #dff1f1; --auf: #ffffff; }
-@media (prefers-color-scheme: dark) { :root { --stern: #f2c14e; --grund: #11161b; --flaeche: #1a2128; --text: #e8edf1; --leise: #9aa6b1; --linie: #2c353e; --akzent: #38b2ac; --akzent-text: #06201f; --gut: #4ecb8d; --gut-grund: #13301f; --schlecht: #ef7d74; --schlecht-grund: #3a1b18; --warn: #3a2f12; --warn-text: #f2d893; --wahl: #12302f; --auf: #0b1a12; } }
+:root { --stern: #c88a00; --grund: #f6f7f8; --flaeche: #ffffff; --text: #16202a; --leise: #5c6873; --linie: #d9dee3; --akzent: #0b6e6e; --akzent-text: #ffffff; --gut: #1a7f4b; --gut-grund: #e5f4ec; --schlecht: #b3372f; --schlecht-grund: #fbe9e7; --wahl: #dff1f1; --auf: #ffffff; }
+@media (prefers-color-scheme: dark) { :root { --stern: #f2c14e; --grund: #11161b; --flaeche: #1a2128; --text: #e8edf1; --leise: #9aa6b1; --linie: #2c353e; --akzent: #38b2ac; --akzent-text: #06201f; --gut: #4ecb8d; --gut-grund: #13301f; --schlecht: #ef7d74; --schlecht-grund: #3a1b18; --wahl: #12302f; --auf: #0b1a12; } }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--grund); color: var(--text); font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -50,7 +50,8 @@ p { margin: 0; }
 .urteil { font-weight: 700; font-size: 19px; }
 .urteil.gut { color: var(--gut); }
 .urteil.schlecht { color: var(--schlecht); }
-.hinweis { background: var(--warn); color: var(--warn-text); padding: 9px 11px; border-radius: 10px; font-size: 15px; }
+.hinweis { color: var(--leise); font-size: 13px; margin: 0; }
+.institut { border-left: 3px solid var(--stern); padding: 3px 0 3px 10px; font-size: 15px; font-weight: 600; margin: 0; }
 .uhr { font-weight: 700; font-size: 15px; text-align: right; }
 .md { font-size: 16px; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 6px; }
 .md ul, .md ol { margin: 0; padding-left: 20px; }

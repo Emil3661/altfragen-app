@@ -88,6 +88,25 @@ class Probeklausur(unittest.TestCase):
 
 
 
+class Hinweise(unittest.TestCase):
+    """Institutszeilen werden von den übrigen Hinweisen getrennt, nur über den Anfang der Zeile."""
+
+    def test_trennen(self):
+        h = ['Varianten: auch als Falschaussage', 'Institut wertet „B“ (Klausureinsicht 21/22)',
+             'Protokoll: D', '  Institut wertet „C“']
+        self.assertEqual(bauen.hinweise_trennen(h),
+                         (['Institut wertet „B“ (Klausureinsicht 21/22)', '  Institut wertet „C“'],
+                          ['Varianten: auch als Falschaussage', 'Protokoll: D']))
+
+    def test_nur_am_anfang(self):
+        # Erwähnt ein Hinweis das Institut nur mitten im Satz, bleibt er ein gewöhnlicher Hinweis
+        h = ['Laut Klausureinsicht: Institut wertet B', 'Institutwertet', 'Institut werte B']
+        self.assertEqual(bauen.hinweise_trennen(h), ([], h))
+
+    def test_leer(self):
+        self.assertEqual(bauen.hinweise_trennen([]), ([], []))
+
+
 class Ergaenzung(unittest.TestCase):
     """Ergänzte Optionen eines Fachordners: über den Schlüssel Qnn angehängt, offene Fragen bekommen den Typ."""
 

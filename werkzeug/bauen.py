@@ -7,7 +7,8 @@ Rein: <QUELLE>/src/<fach>/index.json, out/<fach>/NN.txt, ergaenzt/<fach>/NN.txt 
 Raus: build/fragen-<fach>.json nach FORMAT.md. Weicht das Gebaute vom Lernskript oder einer Probeklausur ab,
       wird die Liste der Abweichungen ausgegeben, nichts geschrieben und mit Code 1 beendet.
 Die Aufbereitung (Reihenfolge, Nummerierung, Mischen der Optionen) folgt render.py der Quelle.
-Aufruf: python werkzeug/bauen.py <fach aus faecher.py>
+Aufruf: python werkzeug/bauen.py <fach aus faecher.py> [--lernskript <pfad>]
+       (--lernskript prüft gegen ein neu gesetztes Lernskript statt gegen das auf Drive)
 Schreibweisen: [x for x in liste if bedingung] baut eine Liste, {..} ebenso eine Menge oder ein Dictionary,
 (..) einen Durchlauf ohne Zwischenliste; lambda v: ausdruck ist eine Funktion in einer Zeile, meist als
 Sortierschlüssel; next(durchlauf, None) liefert den ersten Treffer oder None.
@@ -147,9 +148,22 @@ def titel_und_stufe(titel):
     return (m.group(1), m.group(2)) if m else (titel, None)
 
 
+# Hinweise, die so beginnen, belegen eine Wertung des Instituts (Klausureinsicht, Lösungsschlüssel).
+# Die App zeigt sie deutlich, alle übrigen Hinweise klein
+INSTITUT = re.compile(r'^\s*Institut wertet\b')
+
+
+def hinweise_trennen(hinweise):
+    """Hinweise in (Institutszeilen, übrige) trennen, die Reihenfolge innerhalb beider bleibt."""
+    institut = [h for h in hinweise if INSTITUT.match(h)]
+    rest = [h for h in hinweise if not INSTITUT.match(h)]
+    return institut, rest
+
+
 def frage_bauen(fach, t, n, schl, nr, abschnitt, q):
     # Eine Frage nach FORMAT.md; Typ und Lösung wie in render.py
     ids = t['q_ids'][n]
+    institut, hinweis = hinweise_trennen(list(q['hinweis']))
     mal = len([i for i in ids.split(' · ') if i.strip()])
     stamm, aussagen = aussagen_trennen(q['stem'])
     optionen, loesung = [], None
@@ -165,7 +179,7 @@ def frage_bauen(fach, t, n, schl, nr, abschnitt, q):
                     for o, w, c, e in optionen_mischen(f'{fach}-{t["rank"]}-{schl}', q)]
     return {'id': f'{t["rank"]}.{schl}', 'nr': nr, 'abschnitt': abschnitt, 'mal': mal, 'typ': typ,
             'stamm': stamm, 'aussagen': aussagen, 'optionen': optionen, 'loesung': loesung,
-            'neu': list(q['neu']), 'hinweis': list(q['hinweis']), 'ids': ids}
+            'neu': list(q['neu']), 'institut': institut, 'hinweis': hinweis, 'ids': ids}
 
 
 def erklaerungen_lesen(pfad, fehler):
@@ -477,19 +491,28 @@ def lesen(pfad):
 
 
 def main(argv):
-    if len(argv) != 2 or argv[1] not in FAECHER:
-        print(f'Aufruf: python werkzeug/bauen.py {"|".join(FAECHER)}')
+    # Optional --lernskript <pfad>: gegen ein neu gesetztes Lernskript prüfen statt gegen das auf Drive,
+    # bevor lernskript_ersetzen.py es hochlädt
+    args = argv[1:]
+    lernskript = None
+    if '--lernskript' in args:
+        i = args.index('--lernskript')
+        lernskript = args[i + 1] if i + 1 < len(args) else ''
+        del args[i:i + 2]
+    if len(args) != 1 or args[0] not in FAECHER or lernskript == '':
+        print(f'Aufruf: python werkzeug/bauen.py {"|".join(FAECHER)} [--lernskript <pfad>]')
         return 2
-    fach = argv[1]
+    fach = args[0]
     cfg = FAECHER[fach]
+    lernskript = lernskript or cfg['lernskript']
     fehler = []
     daten, roh, leer = bauen(fach, fehler)
 
-    # Prüfung gegen das echte Lernskript (so, wie es zuletzt gespeichert wurde)
-    if os.path.exists(cfg['lernskript']):
-        fehler += lernskript_pruefen(daten, lesen(cfg['lernskript']))
+    # Prüfung gegen das Lernskript (ohne Angabe so, wie es zuletzt auf Drive gespeichert wurde)
+    if os.path.exists(lernskript):
+        fehler += lernskript_pruefen(daten, lesen(lernskript))
     else:
-        fehler.append(f'Lernskript fehlt: {cfg["lernskript"]}')
+        fehler.append(f'Lernskript fehlt: {lernskript}')
 
     # Probeklausuren: jede Frage muss eindeutig einer Frage-ID zugeordnet werden
     for i, pfad in enumerate(cfg['probeklausuren'], start=1):

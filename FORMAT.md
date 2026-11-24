@@ -60,6 +60,7 @@ Alle im Ordner `Altfragen-App`, angelegt vom Werkzeug `veroeffentlichen.py` übe
           "optionen": [{"t": "<Text>", "w": "<Begründung>", "richtig": true, "erg": false, "fest": false}],
           "loesung": {"t": "<Text>", "w": "<Begründung>"},
           "neu": ["<Text>"],
+          "institut": ["Institut wertet „…“ (Klausureinsicht 21/22)"],
           "hinweis": ["<Text>"],
           "ids": "1920-02 · 2223-21"
         }
@@ -80,6 +81,7 @@ Alle im Ordner `Altfragen-App`, angelegt vom Werkzeug `veroeffentlichen.py` übe
 - `abschnitt` = Titel aus `abschnitte`, unter dem die Frage im Lernskript steht, sonst `null`
 - Texte sind Markdown-Teilmenge: `**fett**`, `*kursiv*`, Listen mit `- ` (Einrückung zwei Leerzeichen je Ebene), nummerierte Listen, Tabellen mit `|`. Kein HTML
 - `optionen[].w` = Begründung, die App zeigt sie nach dem Lösen direkt unter der Option, mit ✓ trifft zu / ✗ trifft nicht zu. `neu` = Extra-Fakten
+- Lösung ist die fachlich richtige Antwort. `institut` = belegte Wertung des Instituts (Klausureinsicht, Lösungsschlüssel), wenn sie davon abweicht oder die Klausur eine zweite vertretbare Option hatte; die App zeigt sie deutlich. `bauen.py` nimmt dafür die Hinweise der Quelle, die mit „Institut wertet“ beginnen. `hinweis` = alles Übrige (Protokollabweichung, Varianten, Quellen), klein
 
 ### Ausgebaute Erklärungen (Quelle)
 
