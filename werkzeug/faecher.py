@@ -64,4 +64,15 @@ FAECHER = {
         'ordner': 'C:/Users/joong/altfragen/umwelt',
         'durchgang': '2027-01-23',
     },
+    'humgen': {
+        'name': 'Humangenetik',
+        'klausur': '2027-02-12',
+        'klausurInfo': '40 Fragen in 60 Minuten',
+        'plan': 'rang',
+        'lernskript': f'{_HUMGEN}/Humangenetik — Lernskript.md',
+        'probeklausuren': [f'{_HUMGEN}/Humangenetik — Probeklausur 1.md', f'{_HUMGEN}/Humangenetik — Probeklausur 2.md'],
+        'minuten': 60,
+        'ordner': 'C:/Users/joong/altfragen/humgen',
+        'durchgang': '2027-01-21',
+    },
 }
