@@ -1,12 +1,13 @@
 """Baut die Fragendatei der App aus den Quellen des Lernskripts und prüft sie gegen das echte Lernskript.
 
 Rein: <QUELLE>/src/<fach>/index.json, out/<fach>/NN.txt, ergaenzt/<fach>/NN.txt (über fmt.lade),
-      erklaert/<fach>/NN.txt (ausgebaute Erklärungen, optional),
+      bei Fächern mit eigenem Fachordner dessen src/index.json, out/NN.txt, ergaenzt/NN.txt,
+      <QUELLE>/erklaert/<fach>/NN.txt (ausgebaute Erklärungen, optional),
       das Lernskript und die beiden Probeklausuren des Fachs (nur gelesen).
 Raus: build/fragen-<fach>.json nach FORMAT.md. Weicht das Gebaute vom Lernskript oder einer Probeklausur ab,
       wird die Liste der Abweichungen ausgegeben, nichts geschrieben und mit Code 1 beendet.
 Die Aufbereitung (Reihenfolge, Nummerierung, Mischen der Optionen) folgt render.py der Quelle.
-Aufruf: python werkzeug/bauen.py mibi|innere
+Aufruf: python werkzeug/bauen.py <fach aus faecher.py>
 Schreibweisen: [x for x in liste if bedingung] baut eine Liste, {..} ebenso eine Menge oder ein Dictionary,
 (..) einen Durchlauf ohne Zwischenliste; lambda v: ausdruck ist eine Funktion in einer Zeile, meist als
 Sortierschlüssel; next(durchlauf, None) liefert den ersten Treffer oder None.
@@ -77,6 +78,48 @@ def aussagen_trennen(stamm):
     if len(nummern) < 3 or nummern != [str(i) for i in range(1, len(nummern) + 1)]:
         return stamm, None
     return kopf, [t.strip().rstrip('.').strip() for t in texte]
+
+
+def quelle(fach):
+    """Ordner der Quelle eines Fachs. Raus: {'index': Pfad zu index.json, 'out': Ordner, 'ergaenzt': Ordner}.
+
+    Mit 'ordner' in FAECHER: Fachordner im Aufbau des Skills altfragen (src/, out/, ergaenzt/ direkt darin),
+    sonst QUELLE mit einem Unterordner je Fach.
+    """
+    ordner = FAECHER[fach].get('ordner')
+    if ordner:
+        return {'index': f'{ordner}/src/index.json', 'out': f'{ordner}/out', 'ergaenzt': f'{ordner}/ergaenzt'}
+    return {'index': f'{QUELLE}/src/{fach}/index.json', 'out': f'{QUELLE}/out/{fach}',
+            'ergaenzt': f'{QUELLE}/ergaenzt/{fach}'}
+
+
+def ergaenzung_anhaengen(o, erg):
+    """Ergänzte Optionen (erg, gelesen aus ergaenzt/NN.txt) an die Fragen des Themas o hängen, über den Schlüssel Qnn.
+
+    Wie fmt.lade der Quelle: Unbekannter Schlüssel = Fehler in o['errors']. Bei offenen Fragen legt die Ergänzung
+    fest, ob positiv oder negativ gefragt ist. Raus: o, verändert.
+    """
+    for key, eq in erg['qs'].items():
+        q = o['qs'].get(key)
+        if q is None:
+            o['errors'].append(f'ergaenzt: {key} gibt es im Thema nicht')
+            continue
+        q['e'], q['skip'] = eq['e'], eq['skip']
+        if q['typ'] == 'offen' and eq['typ'] in ('positiv', 'negativ') and eq['e']:
+            q['typ'] = eq['typ']
+            q['war_offen'] = True
+    return o
+
+
+def thema_laden(fach, rang):
+    # Ein Thema mit ergänzten Optionen. Fächer ohne eigenen Fachordner laden unverändert über fmt.lade der Quelle,
+    # Fächer mit Fachordner lesen dieselben Dateien aus ihren eigenen Ordnern
+    if not FAECHER[fach].get('ordner'):
+        return _fmt().lade(QUELLE, fach, rang)
+    p = quelle(fach)
+    o = _fmt().parse_out(f'{p["out"]}/{rang:02d}.txt')
+    pfad_erg = f'{p["ergaenzt"]}/{rang:02d}.txt'
+    return ergaenzung_anhaengen(o, _fmt().parse_out(pfad_erg)) if os.path.exists(pfad_erg) else o
 
 
 def ist_bruchstueck(q):
@@ -187,7 +230,8 @@ def bauen(fach, fehler):
     Raus: (daten, roh {frageId: Quellfrage}, Anzahl weggelassener leerer Bruchstücke).
     """
     cfg = FAECHER[fach]
-    with open(f'{QUELLE}/src/{fach}/index.json', encoding='utf-8') as d:
+    pfade = quelle(fach)
+    with open(pfade['index'], encoding='utf-8') as d:
         idx = json.load(d)
     bloecke, block_nr = [], {}
     # Blöcke: "Block N · Titel" -> Nummer N und Titel ohne Vorsatz; Themen verweisen über die Zeilennummer
@@ -200,10 +244,10 @@ def bauen(fach, fehler):
         bloecke.append({'nr': int(m.group(1)), 'titel': m.group(2), 'meta': meta_text(b['meta'])})
     themen, roh, leer = [], {}, 0
     for t in idx['topics']:
-        if not os.path.exists(f'{QUELLE}/out/{fach}/{t["rank"]:02d}.txt'):
+        if not os.path.exists(f'{pfade["out"]}/{t["rank"]:02d}.txt'):
             fehler.append(f'Thema {t["rank"]}: out-Datei fehlt')
             continue
-        o = _fmt().lade(QUELLE, fach, t['rank'])
+        o = thema_laden(fach, t['rank'])
         if o['errors']:
             fehler.append(f'Thema {t["rank"]}: {o["errors"]}')
         titel, stufe = titel_und_stufe(t['title'])
@@ -249,6 +293,9 @@ def bauen(fach, fehler):
     daten = {'format': 1, 'fach': fach, 'name': cfg['name'], 'klausur': cfg['klausur'],
              'klausurInfo': cfg['klausurInfo'], 'stand': kern.jetzt_berlin(), 'plan': cfg['plan'],
              'bloecke': bloecke, 'themen': themen, 'probeklausuren': []}
+    # Zieldatum des ersten Durchgangs nur, wenn das Fach eins festlegt; sonst rechnet die App mit Klausur − 7 Tage
+    if cfg.get('durchgang'):
+        daten['durchgang'] = cfg['durchgang']
     return daten, roh, leer
 
 

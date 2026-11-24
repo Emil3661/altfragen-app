@@ -164,6 +164,16 @@ test('Tempo und nächstes Thema', () => {
   assert.strictEqual(n.stand.naechste.id, '1.Q01');
 });
 
+test('Tempo mit eigenem Zieldatum des Fachs', () => {
+  const f = K.leererFortschritt('test');
+  // Ziel einen Tag vor der Klausur statt sieben
+  const tp = K.tempo({ ...daten, durchgang: '2027-02-11' }, f, '2027-02-08');
+  assert.strictEqual(tp.ziel, '2027-02-11');
+  assert.strictEqual(tp.tage, 4);
+  assert.strictEqual(tp.proTag, 1);
+  assert.strictEqual(tp.bisKlausur, 4);
+});
+
 test('Nächstes Thema, sobald alle Fragen einmal beantwortet sind, auch ohne Meditricks und Kern', () => {
   const f = K.leererFortschritt('test');
   K.versuchBuchen(f, '1.Q01', { wahl: ['Banane'] }, '2026-11-09T10:00:00Z', 'g');

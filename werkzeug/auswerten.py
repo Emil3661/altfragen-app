@@ -4,7 +4,7 @@ Rein: fragen-<fach>.json (zuerst im App-Ordner auf Drive, sonst build/), fortsch
       (fehlt sie: leerer Stand) und das Lernskript. Der Abgleich mit dem Lernskript läuft nur im Speicher, damit
       Haken aus Google Docs mitzählen, die die App noch nicht übernommen hat. Es wird nichts geschrieben.
 Raus: knapper Bericht auf der Konsole. Fragen als Thema.Nr (Nummer im Lernskript), es zählt der letzte Versuch.
-Aufruf: python werkzeug/auswerten.py mibi|innere [--md PFAD] [--fortschritt PFAD] [--fragen PFAD] [--heute JJJJ-MM-TT]
+Aufruf: python werkzeug/auswerten.py <fach aus faecher.py> [--md PFAD] [--fortschritt PFAD] [--fragen PFAD] [--heute JJJJ-MM-TT]
 Schreibweisen: [x for x in liste if bedingung] baut eine Liste, {..} ebenso eine Menge oder ein Dictionary,
 (..) einen Durchlauf ohne Zwischenliste; lambda v: ausdruck ist eine Funktion in einer Zeile, meist als
 Sortierschlüssel; next(durchlauf, None) liefert den ersten Treffer oder None.

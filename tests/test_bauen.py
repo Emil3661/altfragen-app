@@ -88,6 +88,36 @@ class Probeklausur(unittest.TestCase):
 
 
 
+class Ergaenzung(unittest.TestCase):
+    """Ergänzte Optionen eines Fachordners: über den Schlüssel Qnn angehängt, offene Fragen bekommen den Typ."""
+
+    @staticmethod
+    def frage(typ, x, o=()):
+        # Frage wie aus fmt.parse_out: Optionen als (Text, Begründung)
+        return {'typ': typ, 'x': [(x, '')], 'o': list(o), 'e': [], 'skip': None}
+
+    def test_anhaengen_und_typ(self):
+        o = {'qs': {'Q01': self.frage('offen', 'Lochien'), 'Q02': self.frage('positiv', 'A', [('B', '')])},
+             'errors': []}
+        erg = {'qs': {'Q01': {'typ': 'positiv', 'e': [('Menorrhoe', 'x')], 'skip': None},
+                      'Q02': {'typ': '', 'e': [('C', '')], 'skip': None}}}
+        bauen.ergaenzung_anhaengen(o, erg)
+        self.assertEqual((o['qs']['Q01']['typ'], o['qs']['Q01']['e'], o['qs']['Q01'].get('war_offen')),
+                         ('positiv', [('Menorrhoe', 'x')], True))
+        self.assertEqual((o['qs']['Q02']['typ'], o['qs']['Q02']['e']), ('positiv', [('C', '')]))
+        self.assertEqual(o['errors'], [])
+
+    def test_skip_bleibt_offen(self):
+        o = {'qs': {'Q01': self.frage('offen', 'Drüsen und Stroma im Myometrium')}, 'errors': []}
+        bauen.ergaenzung_anhaengen(o, {'qs': {'Q01': {'typ': '', 'e': [], 'skip': 'im Testat offen gefragt'}}})
+        self.assertEqual((o['qs']['Q01']['typ'], o['qs']['Q01']['skip']), ('offen', 'im Testat offen gefragt'))
+
+    def test_unbekannter_schluessel_ist_fehler(self):
+        o = {'qs': {}, 'errors': []}
+        bauen.ergaenzung_anhaengen(o, {'qs': {'Q09': {'typ': '', 'e': [], 'skip': None}}})
+        self.assertEqual(len(o['errors']), 1)
+
+
 class Erklaerungen(unittest.TestCase):
     """Ausgebaute Erklärungen: Zuordnung über den Optionstext, unbekannte Optionen und kaputte Zeilen sind Fehler."""
 

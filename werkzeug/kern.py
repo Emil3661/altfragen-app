@@ -559,8 +559,9 @@ def plan_liste(daten):
 
 
 def tempo(daten, f, heute):
-    """Erster Durchgang: offene Pflichtfragen bis sieben Tage vor der Klausur, daraus Fragen pro Tag."""
-    ziel = plus_tage(daten['klausur'], -7)
+    """Erster Durchgang: offene Pflichtfragen bis zum Zieldatum des Fachs (durchgang), ohne eigenes Ziel bis
+    sieben Tage vor der Klausur, daraus Fragen pro Tag."""
+    ziel = daten.get('durchgang') or plus_tage(daten['klausur'], -7)
     tage = max(1, tage_zwischen(heute, ziel) + 1)
     # Zählt je Pflichtthema die Fragen ohne Bruchstücke, die noch nicht beantwortet sind
     offen = sum(1 for t, optional in plan_liste(daten) if not optional for q in t['fragen']

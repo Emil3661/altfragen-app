@@ -486,9 +486,10 @@ const Kern = (() => {
     return null;
   }
 
-  // Tempo für den ersten Durchgang: offene Pflichtfragen bis sieben Tage vor der Klausur.
+  // Tempo für den ersten Durchgang: offene Pflichtfragen bis zum Zieldatum des Fachs (durchgang),
+  // ohne eigenes Ziel bis sieben Tage vor der Klausur. a || b = a, wenn a gesetzt ist, sonst b
   function tempo(daten, f, heute) {
-    const ziel = plusTage(daten.klausur, -7);
+    const ziel = daten.durchgang || plusTage(daten.klausur, -7);
     const tage = Math.max(1, tageZwischen(heute, ziel) + 1);
     let offen = 0;
     for (const p of planListe(daten)) {

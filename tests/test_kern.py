@@ -524,6 +524,11 @@ class Plan(unittest.TestCase):
                          '1.Q02': [app_versuch('b', '2026-11-08T10:00:00Z', ['Gurke'])]}
         self.assertEqual(kern.tempo(DATEN, f, '2026-11-09')['offen'], 3)
 
+    def test_tempo_mit_eigenem_zieldatum(self):
+        # Ziel einen Tag vor der Klausur statt sieben, gleiche Werte wie im JavaScript-Test
+        tp = kern.tempo(dict(DATEN, durchgang='2027-02-11'), kern.leerer_fortschritt('test'), '2027-02-08')
+        self.assertEqual((tp['ziel'], tp['tage'], tp['pro_tag'], tp['bis_klausur']), ('2027-02-11', 4, 1, 4))
+
 
 if __name__ == '__main__':
     unittest.main()

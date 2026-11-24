@@ -1,6 +1,9 @@
-"""Angaben je Fach und gemeinsame Pfade für bauen.py und auswerten.py.
+"""Angaben je Fach und gemeinsame Pfade für bauen.py, auswerten.py und veroeffentlichen.py.
 
 Rein: nichts. Raus: FAECHER (Name, Klausur, Plan, Lernskript, Probeklausuren je Fach) und Ordnerpfade.
+Optional je Fach: 'ordner' = Fachordner im Aufbau des Skills altfragen (src/index.json, out/NN.txt,
+ergaenzt/NN.txt), sonst gilt QUELLE mit Unterordnern je Fach. 'durchgang' = Zieldatum des ersten Durchgangs,
+sonst sieben Tage vor der Klausur.
 Aufruf: from faecher import FAECHER, REPO, BUILD, DRIVE_APP, QUELLE
 """
 import os
@@ -15,6 +18,7 @@ DRIVE_APP = 'G:/Meine Ablage/01 Studium/Organisation/Altfragen-App'
 
 _MIBI = 'G:/Meine Ablage/01 Studium/Fächer/Mikrobiologie/Teil 1 Klausur 2027'
 _INNERE = 'G:/Meine Ablage/01 Studium/Fächer/Innere/Teil 1 Klausur 2027'
+_GYN = 'G:/Meine Ablage/01 Studium/Fächer/Frauenheilkunde'
 
 FAECHER = {
     'mibi': {
@@ -35,5 +39,16 @@ FAECHER = {
         'probeklausuren': [f'{_INNERE}/Innere Teil 1 — Probeklausur 1.md',
                            f'{_INNERE}/Innere Teil 1 — Probeklausur 2.md'],
         'minuten': 90,
+    },
+    'gyn': {
+        'name': 'Gyn Testat',
+        'klausur': '2027-01-08',
+        'klausurInfo': 'Testat, 10 Fragen: 8 MC, 2 offen',
+        'plan': 'block-stufe',
+        'lernskript': f'{_GYN}/Gyn Testat — Lernskript.md',
+        'probeklausuren': [],
+        'minuten': None,
+        'ordner': 'C:/Users/joong/altfragen/gyn',
+        'durchgang': '2027-01-07',
     },
 }

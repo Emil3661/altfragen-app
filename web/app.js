@@ -6,7 +6,7 @@
   const M = Markdown;
   const D = Drive;
   const BEREICH = 'https://www.googleapis.com/auth/drive.file';
-  const VERSION = '1.4';
+  const VERSION = '1.5';
 
   // ---------- Ablage im Browser (IndexedDB) ----------
   // Schlüssel-Wert-Speicher: konfig, fragen:<fach>, fortschritt:<fach>. Größer als localStorage erlaubt.
@@ -400,7 +400,8 @@
         else zeige('thema', { rang: t.rang });
       }, 'haupt'));
     } else {
-      pk.append(el('p', { text: 'Erster Durchgang fertig. Probeklausur, dann Falsch und Markiert.' }));
+      // Fächer ohne Probeklausur (etwa ein Testat) gehen direkt zu den Sammlungen
+      pk.append(el('p', { text: (d.probeklausuren || []).length ? 'Erster Durchgang fertig. Probeklausur, dann Falsch und Markiert.' : 'Erster Durchgang fertig. Jetzt Falsch und Markiert.' }));
     }
     pk.append(el('p', { class: 'unter klein', text: tp.offen ? `Erster Durchgang bis ${datum(tp.ziel)}: ${tp.offen} Fragen offen, etwa ${tp.proTag} pro Tag` : `Erster Durchgang vollständig` }));
     teile.push(pk);

@@ -70,6 +70,7 @@ Alle im Ordner `Altfragen-App`, angelegt vom Werkzeug `veroeffentlichen.py` übe
 }
 ```
 
+- `durchgang`: optional, Datum, bis zu dem der erste Durchgang fertig sein soll (Tempo). Fehlt es, gilt sieben Tage vor der Klausur. Für Testate, die erst in der Woche davor gelernt werden
 - `plan`: `rang` = Themen nach Rang. `block-stufe` = Blöcke in Reihenfolge, darin Stufe A, dann B; alle C-Themen danach als „nur bei Zeit“
 - `id` = `<rang>.<Qnn>` aus der Quelle, bleibt über Neubauten stabil. `nr` = Nummer im Lernskript (`**Frage nr**`), leere Bruchstücke zählen nicht mit
 - `optionen` in der Reihenfolge des Lernskripts. `richtig` = anzukreuzen (bei negativ gestellten Fragen die falsche Aussage). `erg` = nicht überliefert, ergänzt. `fest` = Sammeloption („alle genannten“), bleibt beim Neumischen am Ende. Leer bei `offen` und `fragment`
@@ -160,7 +161,7 @@ Zeilenweise, `\r` am Zeilenende ignorieren:
 - Bruchstücke werden nicht beantwortet
 - Eine Frage gilt als beantwortet, sobald sie einen nicht gelöschten Versuch mit Ergebnis hat (für Plan, Tempo, „Weiter mit Frage“). Im Thema zählt das Ergebnis des letzten solchen Versuchs (Anteil richtig)
 - Keine Wiederholung nach Zeitplan: Was erneut geübt wird, wählt man über die Sammlungen
-- Tempo des ersten Durchgangs: offene Pflichtfragen bis sieben Tage vor der Klausur, Tage = Kalendertage in Europe/Berlin
+- Tempo des ersten Durchgangs: offene Pflichtfragen bis `durchgang`, ohne diese Angabe bis sieben Tage vor der Klausur, Tage = Kalendertage in Europe/Berlin
 
 ## Sammlungen
 

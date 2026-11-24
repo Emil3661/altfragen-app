@@ -4,7 +4,7 @@ Die App sieht nur Dateien, die JARVIS angelegt hat. Deshalb entstehen alle App-D
 Erkannt werden sie an appProperties (altfragenApp = Rolle, fach = Kürzel), nicht am Namen.
 
 Aufruf:
-  python veroeffentlichen.py fragen mibi innere     build/fragen-<fach>.json hochladen, Fortschritt leer anlegen falls neu, Konfiguration schreiben.
+  python veroeffentlichen.py fragen mibi innere     build/fragen-<fach>.json hochladen, ohne Fach alle aus faecher.py, Fortschritt leer anlegen falls neu, Konfiguration schreiben.
                                                     Bricht ab, wenn eine Frage-ID neuen Inhalt hätte (--erzwingen übergeht das)
   python veroeffentlichen.py lernskript <fach> <datei.md> <ordner-id>
                                                     Lernskript als neue JARVIS-Datei in den Ordner legen (einmalig je Fach)
@@ -29,11 +29,16 @@ UPLOAD = "https://www.googleapis.com/upload/drive/v3"
 # Ordner "01 Studium/Organisation" auf Drive; darin entsteht der App-Ordner
 ORGANISATION = "1CyEGvc5L0Y5QJOWtN4rSdZIVZmqL6HQM"
 ORDNER_NAME = "Altfragen-App"
-FAECHER = {"mibi": "MiBi Teil 1", "innere": "Innere Teil 1"}
 
-# Zugang aus dem Skill aufgaben übernehmen: dieselbe Client-Datei, derselbe erneuerbare Schlüssel
+# Zugang aus dem Skill aufgaben übernehmen: dieselbe Client-Datei, derselbe erneuerbare Schlüssel.
+# Dazu faecher.py aus dem eigenen Ordner
 sys.path.insert(0, str(Path(r"G:/Meine Ablage/2nd Brain/.claude/skills/aufgaben/skripte")))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import aufgaben
+import faecher
+
+# Fächer und ihre Namen aus faecher.py, in derselben Reihenfolge wie dort (= Reihenfolge der Knöpfe in der App)
+FAECHER = {fach: cfg["name"] for fach, cfg in faecher.FAECHER.items()}
 
 
 class Fehler(Exception):
@@ -121,11 +126,13 @@ def ids_pruefen(alt: dict, neu: dict) -> list[str]:
 def fragen_veroeffentlichen(faecher: list[str], erzwingen: bool = False) -> None:
     """Fragen hochladen, leeren Fortschritt nur anlegen, wenn es noch keinen gibt, dann die Konfiguration.
     Hat eine bestehende Frage-ID neuen Inhalt, bricht es ab, außer mit --erzwingen."""
+    # Erst alle Fragendateien prüfen, damit kein Fach hochgeladen wird, wenn ein anderes fehlt
+    fehlend = [f for f in faecher if not (BUILD / f"fragen-{f}.json").exists()]
+    if fehlend:
+        raise Fehler("Fragendatei fehlt, zuerst bauen.py: " + ", ".join(fehlend))
     ordner = app_ordner()
     for fach in faecher:
         quelle = BUILD / f"fragen-{fach}.json"
-        if not quelle.exists():
-            raise Fehler(f"{quelle} fehlt, zuerst bauen.py {fach}")
         inhalt = quelle.read_bytes()
         neu = json.loads(inhalt)
         da = einzeln(finden("fragen", fach), f"Fragen {fach}")
