@@ -92,6 +92,61 @@ class Uebertragen(unittest.TestCase):
         with self.assertRaises(le.Fehler):
             le.uebertragen(MD, DATEN, neu_text, neu_daten)
 
+    def test_geaendert_ohne_haken_geht_durch(self):
+        # 1.Q02 trägt keine Kästchen; ihr Stamm ändert sich gewollt, die übrigen Haken bleiben
+        neu_text, neu_daten = neue_fassung()
+        neu_daten['themen'][0]['fragen'][1]['stamm'] = 'Was ist kein Obst, sondern Gemüse?'
+        neu_text = neu_text.replace('Was ist kein Obst?', 'Was ist kein Obst, sondern Gemüse?', 1)
+        with self.assertRaises(le.Fehler):
+            le.uebertragen(MD, DATEN, neu_text, neu_daten)
+        text, bericht = le.uebertragen(MD, DATEN, neu_text, neu_daten, ('1.Q02',))
+        alt, _ = zustaende(MD, DATEN)
+        neu, fehler = zustaende(text, neu_daten)
+        self.assertEqual(fehler, [])
+        for qid, k in alt.items():
+            self.assertEqual(neu[qid], k, qid)
+        self.assertEqual(bericht['haken'], 5)
+
+    def test_geaendert_mit_haken_bricht_ab(self):
+        neu_text, neu_daten = neue_fassung()
+        neu_daten['themen'][0]['fragen'][0]['stamm'] = 'Was ist eckig?'
+        neu_text = neu_text.replace('Was ist rund?', 'Was ist eckig?', 1)
+        with self.assertRaisesRegex(le.Fehler, 'tragen Kästchen'):
+            le.uebertragen(MD, DATEN, neu_text, neu_daten, ('1.Q01',))
+
+    def test_geaendert_nur_falsch_kaestchen_bricht_ab(self):
+        # 1.Q03 trägt nur das Kästchen falsch, auch das gehörte zur alten Frage
+        neu_text, neu_daten = neue_fassung()
+        neu_daten['themen'][0]['fragen'][2]['stamm'] = 'Nenne eine Steinfrucht.'
+        neu_text = neu_text.replace('Nenne eine Zitrusfrucht.', 'Nenne eine Steinfrucht.', 1)
+        with self.assertRaisesRegex(le.Fehler, 'tragen Kästchen'):
+            le.uebertragen(MD, DATEN, neu_text, neu_daten, ('1.Q03',))
+
+    def test_geaendert_ohne_abweichung_bricht_ab(self):
+        neu_text, neu_daten = neue_fassung()
+        with self.assertRaisesRegex(le.Fehler, 'gleich oder unbekannt'):
+            le.uebertragen(MD, DATEN, neu_text, neu_daten, ('1.Q02',))
+
+    def test_geaendert_mit_neuer_nummer_bricht_ab(self):
+        # Stamm geändert und zugleich auf Nummer 3 gerückt: Die Nummer bleibt auch mit --geaendert streng
+        neu_text, neu_daten = neue_fassung()
+        f = neu_daten['themen'][0]['fragen']
+        f[1]['stamm'] = 'Was ist kein Obst, sondern Gemüse?'
+        f[1]['nr'], f[2]['nr'] = 3, 2
+        neu_text = neu_text.replace('Was ist kein Obst?', 'Was ist kein Obst, sondern Gemüse?', 1)
+        neu_text = neu_text.replace('**Frage 2** · 2× gefragt', '**Frage 9** · 2× gefragt', 1)
+        neu_text = neu_text.replace('**Frage 3**\n\nNenne', '**Frage 2**\n\nNenne', 1)
+        neu_text = neu_text.replace('**Frage 9** · 2× gefragt', '**Frage 3** · 2× gefragt', 1)
+        with self.assertRaisesRegex(le.Fehler, 'andere Nummer'):
+            le.uebertragen(MD, DATEN, neu_text, neu_daten, ('1.Q02', '1.Q03'))
+
+    def test_fortschritt_belegt(self):
+        fo = {'versuche': {'1.Q01': [{'wahl': ['Apfel']}], '1.Q02': []}, 'sterne': {'2.Q01': {'wert': True}},
+              'md': {'basis': {'2.Q03': 'Lauch#u1f0'}, 'ueberschrieben': {'1.Q04': 'Zitrone#u0f0'}}}
+        self.assertEqual(le.fortschritt_belegt(fo, ('1.Q01', '1.Q02', '2.Q01', '1.Q03', '2.Q03', '1.Q04')),
+                         ['1.Q01', '1.Q04', '2.Q01', '2.Q03'])
+        self.assertEqual(le.fortschritt_belegt({}, ('1.Q01',)), [])
+
     def test_frage_mit_haken_fehlt(self):
         neu_text, neu_daten = neue_fassung()
         neu_text = neu_text.replace('**Frage 1**\n', 'Frage eins\n', 1)

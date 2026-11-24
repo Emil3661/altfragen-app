@@ -14,13 +14,18 @@ ohne Angabe build/lernskript-<fach>-hochgeladen.md, die dieses Werkzeug nach jed
 Raus: Sicherung des alten Lernskripts im Sicherungsordner, das neue mit allen Kästchen auf Drive.
 Abbruch ohne Hochladen, wenn
 - eines der beiden Lernskripte nicht Frage für Frage zu seinen Fragendaten passt (Stamm, Optionen, Lösung),
-- eine Frage-ID in alten und neuen Fragendaten etwas anderes meint (Stamm, Optionen, Thema oder Nummer),
+- eine Frage-ID in alten und neuen Fragendaten etwas anderes meint (Stamm, Optionen, Thema oder Nummer), außer sie
+  ist mit --geaendert angegeben und trägt weder Kästchen im Lernskript noch Versuche oder Stern in der App,
 - ein Kästchen keiner Frage oder Option zugeordnet werden kann oder eine Frage mit Haken im neuen fehlt,
 - das alte Lernskript Wörter oder Zeichen enthält, die in der zuletzt hochgeladenen Fassung fehlen (Notizen in Docs),
 - sich die Datei auf Drive während des Laufs ändert.
 
-Aufruf: python werkzeug/lernskript_ersetzen.py <fach> <neu.md> <sicherungsordner> [--vorher <datei.md>] [--probe]
-  --probe   alles prüfen, das Ergebnis in den Sicherungsordner schreiben, nichts hochladen
+Aufruf: python werkzeug/lernskript_ersetzen.py <fach> <neu.md> <sicherungsordner> [--vorher <datei.md>]
+        [--geaendert <ID,ID>] [--probe]
+  --geaendert  Frage-IDs, deren Stamm oder Optionen gewollt geändert sind (etwa ein ergänzter Aussagenpool).
+               Geprüft wird der Fortschritt auf Drive: vorher jedes Gerät mit der App abgleichen und die App bis
+               nach veroeffentlichen.py nicht benutzen, sonst bringt ein Gerät alte Versuche zu der ID mit
+  --probe      alles prüfen, das Ergebnis in den Sicherungsordner schreiben, nichts hochladen
 Vorher offene Docs-Tabs dieses Lernskripts schließen: Ein offener Tab kann seine alte Fassung zurückspeichern.
 Schreibweisen: Counter zählt, wie oft jedes Wort vorkommt; a - b bei zwei Countern lässt nur den Überschuss von a.
 """
@@ -80,9 +85,19 @@ def andere_fragen(alt_daten, neu_daten):
     return sorted(i for i in alt.keys() & neu.keys() if alt[i] != neu[i])
 
 
-def uebertragen(alt_text, alt_daten, neu_text, neu_daten):
+def fortschritt_belegt(fortschritt, ids):
+    """Frage-IDs aus ids, zu denen die App etwas gespeichert hat: Versuche, Stern oder einen Lernskript-Stand
+    (md.basis, md.ueberschrieben). Raus: sortierte Liste."""
+    fortschritt = fortschritt or {}
+    md = fortschritt.get('md') or {}
+    orte = [fortschritt.get('sterne') or {}, md.get('basis') or {}, md.get('ueberschrieben') or {}]
+    return sorted(i for i in ids if (fortschritt.get('versuche') or {}).get(i) or any(i in o for o in orte))
+
+
+def uebertragen(alt_text, alt_daten, neu_text, neu_daten, geaendert=()):
     """Kästchen des alten Lernskripts in das neue übernehmen, Frage für Frage über die ID.
 
+    geaendert: Frage-IDs, die im Neubau gewollt etwas anderes meinen dürfen, solange sie keine Kästchen tragen.
     Raus: (neuer Text, {'fragen': Zahl übernommener Zustände, 'haken': Zahl angehakter Kästchen,
     'neu': IDs, die nur im neuen Lernskript stehen}). Unlösbares löst Fehler aus, nichts wird geraten.
     """
@@ -92,6 +107,20 @@ def uebertragen(alt_text, alt_daten, neu_text, neu_daten):
         if abw:
             raise Fehler(f'{name} Lernskript passt nicht zu seinen Fragendaten ({len(abw)}): ' + ' | '.join(abw[:5]))
     anders = andere_fragen(alt_daten, neu_daten)
+    # Eine angegebene ID, die gar nicht abweicht, ist ein Tippfehler oder eine veraltete Angabe
+    unnoetig = sorted(set(geaendert) - set(anders))
+    if unnoetig:
+        raise Fehler('Mit --geaendert angegeben, aber in beiden Fassungen gleich oder unbekannt: ' + ', '.join(unnoetig))
+    # Thema und Nummer bleiben auch bei geänderten Fragen: Die App liest die neue Fassung bis zum Hochladen der
+    # Fragen über (Thema, Nummer) mit den alten Fragendaten
+    def stelle(daten):
+        # {Frage-ID: (Rang, Nummer)}
+        return {q['id']: (t['rang'], q['nr']) for t in daten['themen'] for q in t['fragen']}
+    alt_stelle, neu_stelle = stelle(alt_daten), stelle(neu_daten)
+    verschoben = sorted(i for i in geaendert if alt_stelle[i] != neu_stelle[i])
+    if verschoben:
+        raise Fehler('Geänderte Fragen haben ein anderes Thema oder eine andere Nummer: ' + ', '.join(verschoben))
+    anders = [i for i in anders if i not in geaendert]
     if anders:
         raise Fehler(f'{len(anders)} Frage-IDs meinen im Neubau eine andere Frage oder Stelle: ' + ', '.join(anders[:20]))
 
@@ -108,6 +137,10 @@ def uebertragen(alt_text, alt_daten, neu_text, neu_daten):
 
     # Jede Frage mit Kästchen-Inhalt muss im neuen Lernskript wieder vorkommen
     mit_inhalt = {qid: z for qid, z in alt_z.items() if z['wahl'] or z['unsicher'] or z['falsch']}
+    # Ein Kästchen einer geänderten Frage gehörte zur alten Fassung und landete sonst bei der neuen
+    belegt = sorted(qid for qid in geaendert if qid in mit_inhalt)
+    if belegt:
+        raise Fehler('Geänderte Fragen tragen Kästchen im alten Lernskript: ' + ', '.join(belegt))
     fehlend = sorted(qid for qid in mit_inhalt if qid not in neu_orte)
     if fehlend:
         raise Fehler(f'{len(fehlend)} Fragen mit Haken fehlen im neuen Lernskript: {", ".join(fehlend[:20])}')
@@ -146,7 +179,13 @@ def main(argv):
         i = args.index('--vorher')
         vorher = args[i + 1] if i + 1 < len(args) else None
         del args[i:i + 2]
-    if len(args) != 3 or args[0] not in FAECHER or vorher is None:
+    geaendert = ()
+    if '--geaendert' in args:
+        i = args.index('--geaendert')
+        # Liste mit Kommas, Leerstellen um die IDs fallen weg; fehlt der Wert, gilt der Aufruf als falsch
+        geaendert = tuple(x.strip() for x in args[i + 1].split(',') if x.strip()) if i + 1 < len(args) else None
+        del args[i:i + 2]
+    if len(args) != 3 or args[0] not in FAECHER or vorher is None or geaendert is None:
         print(__doc__)
         return 2
     fach, neu_pfad, sicherung = args
@@ -170,6 +209,15 @@ def main(argv):
         with open(f'{BUILD}/fragen-{fach}.json', encoding='utf-8') as d:
             neu_daten = json.load(d)
         neu_text = lesen(neu_pfad)
+        if geaendert:
+            # Versuche und Sterne der App hängen ebenfalls an der ID und gehörten zur alten Frage
+            fo = vo.einzeln(vo.finden('fortschritt', fach), f'Fortschritt {fach}')
+            fo_roh = vo.anfrage('GET', f'{vo.API}/files/{fo["id"]}?alt=media') if fo else {}
+            fo_daten = fo_roh if isinstance(fo_roh, dict) else json.loads(fo_roh)
+            beantwortet = fortschritt_belegt(fo_daten, geaendert)
+            if beantwortet:
+                raise Fehler('Geänderte Fragen haben in der App Versuche, Stern oder Lernskript-Stand: '
+                             + ', '.join(beantwortet))
 
         # Sicherung zuerst, eigener Dateiname mit Zeitstempel, wird danach nicht mehr angefasst
         os.makedirs(sicherung, exist_ok=True)
@@ -182,7 +230,7 @@ def main(argv):
         if fremd:
             raise Fehler(f'{len(fremd)} Wörter stehen nur im Lernskript auf Drive (eigene Notizen?): '
                          + ' '.join(fremd[:40]))
-        text, bericht = uebertragen(alt_text, alt_daten, neu_text, neu_daten)
+        text, bericht = uebertragen(alt_text, alt_daten, neu_text, neu_daten, geaendert)
         inhalt = text.encode('utf-8')
 
         if probe:
