@@ -160,11 +160,46 @@ def hinweise_trennen(hinweise):
     return institut, rest
 
 
+def herkunft(ids):
+    """Herkunft als Semester, neueste zuerst, mehrfache mit "(2×)". Raus: (Text, Zahl der Vorkommen).
+
+    "2526-14 · 2526W-07 · SS17-40" → ("25/26 (2×), SS 17", 3); Termin und Fragenummer fallen weg, schon kurze
+    Angaben ("25/26 (2×)", "SS 17 W") zählen mit. Vier Ziffern ohne Semesterpaar ("2013") sind ein Jahr und bleiben.
+    Unlesbare Angabe = Fehler, kein geratenes Semester.
+    """
+    zaehler, rang = {}, {}
+    for i in ids.split(' · '):
+        i = i.strip()
+        if not i:
+            continue
+        mal = re.search(r'\((\d+)×\)', i)
+        n = int(mal.group(1)) if mal else 1
+        m = re.match(r'SS ?(\d{2})(?!\d)', i)
+        if m:
+            # Sommersemester liegt nach dem Wintersemester, das im selben Jahr endet
+            sem, r = f'SS {m.group(1)}', (2000 + int(m.group(1)), 1)
+        else:
+            m = re.match(r'(\d{2})/?(\d{2})(?!\d)', i)
+            if not m:
+                raise ValueError(f'Herkunft nicht lesbar: {i!r}')
+            von, bis = m.groups()
+            if (int(von) + 1) % 100 == int(bis):
+                sem, r = f'{von}/{bis}', (2000 + int(bis), 0)
+            else:
+                sem, r = von + bis, (int(von + bis), 0)
+        zaehler[sem] = zaehler.get(sem, 0) + n
+        rang[sem] = r
+    # Sortierschlüssel: Jahr und Semesterhälfte, neueste zuerst
+    text = ', '.join(f'{s} ({zaehler[s]}×)' if zaehler[s] > 1 else s
+                     for s in sorted(zaehler, key=lambda s: rang[s], reverse=True))
+    return text, sum(zaehler.values())
+
+
 def frage_bauen(fach, t, n, schl, nr, abschnitt, q):
     # Eine Frage nach FORMAT.md; Typ und Lösung wie in render.py
     ids = t['q_ids'][n]
     institut, hinweis = hinweise_trennen(list(q['hinweis']))
-    mal = len([i for i in ids.split(' · ') if i.strip()])
+    kurz, mal = herkunft(ids)
     stamm, aussagen = aussagen_trennen(q['stem'])
     optionen, loesung = [], None
     if ist_bruchstueck(q):
@@ -179,7 +214,7 @@ def frage_bauen(fach, t, n, schl, nr, abschnitt, q):
                     for o, w, c, e in optionen_mischen(f'{fach}-{t["rank"]}-{schl}', q)]
     return {'id': f'{t["rank"]}.{schl}', 'nr': nr, 'abschnitt': abschnitt, 'mal': mal, 'typ': typ,
             'stamm': stamm, 'aussagen': aussagen, 'optionen': optionen, 'loesung': loesung,
-            'neu': list(q['neu']), 'institut': institut, 'hinweis': hinweis, 'ids': ids}
+            'neu': list(q['neu']), 'institut': institut, 'hinweis': hinweis, 'ids': ids, 'herkunft': kurz}
 
 
 def erklaerungen_lesen(pfad, fehler):

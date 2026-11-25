@@ -6,7 +6,7 @@
   const M = Markdown;
   const D = Drive;
   const BEREICH = 'https://www.googleapis.com/auth/drive.file';
-  const VERSION = '1.6';
+  const VERSION = '1.7';
 
   // ---------- Ablage im Browser (IndexedDB) ----------
   // Schlüssel-Wert-Speicher: konfig, fragen:<fach>, fortschritt:<fach>. Größer als localStorage erlaubt.
@@ -597,11 +597,13 @@
       el('div', { class: 'kopf-text' }, el('div', { class: 'marke', text: kopfText }), probe ? null : el('div', { class: 'unter klein0', text: t.titel })),
       sternKnopf(id)));
     if (probe) teile.push(probeUhr());
-    // Wie oft gefragt und wie oft schon falsch beantwortet; in der laufenden Probeklausur beides erst nach Abgabe
+    // Wie oft und in welchen Semestern gefragt, wie oft schon falsch beantwortet; in der laufenden Probeklausur
+    // erst nach Abgabe. Ältere Fragendaten ohne "herkunft" zeigen nur die Zahl
     const nFalsch = K.falschZahl(q, f.versuche[id]);
     const zeigen = !probe || runde.probe.abgegeben;
-    if (zeigen && (q.mal > 1 || nFalsch)) {
-      teile.push(el('div', { class: 'marke' }, q.mal > 1 ? `${q.mal}× gefragt` : null, q.mal > 1 && nFalsch ? ' · ' : null,
+    const gefragt = [q.mal > 1 ? `${q.mal}× gefragt` : null, q.herkunft || null].filter(Boolean).join(' · ');
+    if (zeigen && (gefragt || nFalsch)) {
+      teile.push(el('div', { class: 'marke herkunft' }, gefragt || null, gefragt && nFalsch ? ' · ' : null,
         nFalsch ? el('span', { class: 'rot', text: `${nFalsch}× falsch` }) : null));
     }
     teile.push(el('p', { class: 'stamm' }, mdZeile(q.stamm)));
@@ -740,7 +742,6 @@
       teile.push(el('div', { class: 'extra' }, el('strong', { text: 'Extra-Fakten' }), el('ul', {}, ...q.neu.map(n => el('li', {}, mdZeile(n))))));
     }
     for (const h of q.hinweis || []) teile.push(el('p', { class: 'hinweis' }, mdZeile(h)));
-    if (q.ids) teile.push(el('p', { class: 'unter klein', text: q.ids }));
     return teile;
   }
 

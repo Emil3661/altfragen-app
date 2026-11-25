@@ -62,7 +62,8 @@ Alle im Ordner `Altfragen-App`, angelegt vom Werkzeug `veroeffentlichen.py` übe
           "neu": ["<Text>"],
           "institut": ["Institut wertet „…“ (Klausureinsicht 21/22)"],
           "hinweis": ["<Text>"],
-          "ids": "1920-02 · 2223-21"
+          "ids": "1920-02 · 2223-21",
+          "herkunft": "22/23, 19/20"
         }
       ]
     }

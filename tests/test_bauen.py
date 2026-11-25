@@ -107,6 +107,25 @@ class Hinweise(unittest.TestCase):
         self.assertEqual(bauen.hinweise_trennen([]), ([], []))
 
 
+class Herkunft(unittest.TestCase):
+    """Herkunft als Semester: neueste zuerst, gleiche Semester zusammengezählt, Termin und Nummer fallen weg."""
+
+    def test_ids_werden_semester(self):
+        self.assertEqual(bauen.herkunft('2526-14 · 2526W-07 · SS17-40 · 1920V-22'),
+                         ('25/26 (2×), 19/20, SS 17', 4))
+
+    def test_kurze_angaben_zaehlen_mit(self):
+        self.assertEqual(bauen.herkunft('25/26 (2×) · 24/25 · SS 16 · 22/23 W'), ('25/26 (2×), 24/25, 22/23, SS 16', 5))
+
+    def test_sommer_nach_winter_desselben_jahres(self):
+        self.assertEqual(bauen.herkunft('2526a-01 · SS26c-01 · 2013'), ('SS 26, 25/26, 2013', 3))
+
+    def test_leer_und_unlesbar(self):
+        self.assertEqual(bauen.herkunft(''), ('', 0))
+        with self.assertRaises(ValueError):
+            bauen.herkunft('Klausur 7')
+
+
 class Ergaenzung(unittest.TestCase):
     """Ergänzte Optionen eines Fachordners: über den Schlüssel Qnn angehängt, offene Fragen bekommen den Typ."""
 
