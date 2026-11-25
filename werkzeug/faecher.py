@@ -21,6 +21,7 @@ _INNERE = 'G:/Meine Ablage/01 Studium/Fächer/Innere/Teil 1 Klausur 2027'
 _GYN = 'G:/Meine Ablage/01 Studium/Fächer/Frauenheilkunde'
 _UMWELT = 'G:/Meine Ablage/01 Studium/Fächer/Umweltmedizin'
 _HUMGEN = 'G:/Meine Ablage/01 Studium/Fächer/Humangenetik'
+_NEURO = 'G:/Meine Ablage/01 Studium/Fächer/Neurologie'
 
 FAECHER = {
     'mibi': {
@@ -74,5 +75,16 @@ FAECHER = {
         'minuten': 60,
         'ordner': 'C:/Users/joong/altfragen/humgen',
         'durchgang': '2027-01-21',
+    },
+    'neuro': {
+        'name': 'Neurologie',
+        'klausur': '2027-06-30',
+        'klausurInfo': '40 Fragen in 60 Minuten · Termin vorläufig',
+        'plan': 'rang',
+        'lernskript': f'{_NEURO}/Neurologie — Lernskript.md',
+        'probeklausuren': [f'{_NEURO}/Neurologie — Probeklausur 1.md', f'{_NEURO}/Neurologie — Probeklausur 2.md'],
+        'minuten': 60,
+        'ordner': 'C:/Users/joong/altfragen/neuro',
+        'durchgang': '2027-06-12',
     },
 }
