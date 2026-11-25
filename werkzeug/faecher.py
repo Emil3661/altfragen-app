@@ -23,6 +23,7 @@ _UMWELT = 'G:/Meine Ablage/01 Studium/Fächer/Umweltmedizin'
 _HUMGEN = 'G:/Meine Ablage/01 Studium/Fächer/Humangenetik'
 _NEURO = 'G:/Meine Ablage/01 Studium/Fächer/Neurologie'
 _PAED = 'G:/Meine Ablage/01 Studium/Fächer/Kinderheilkunde'
+_DERMA = 'G:/Meine Ablage/01 Studium/Fächer/Dermatologie'
 
 FAECHER = {
     'mibi': {
@@ -99,5 +100,16 @@ FAECHER = {
         'minuten': 60,
         'ordner': 'C:/Users/joong/altfragen/paed',
         'durchgang': '2027-06-12',
+    },
+    'dermato': {
+        'name': 'Dermatologie',
+        'klausur': '2027-07-20',
+        'klausurInfo': '40 Fragen in 60 Minuten · Termin vorläufig',
+        'plan': 'rang',
+        'lernskript': f'{_DERMA}/Dermatologie — Lernskript.md',
+        'probeklausuren': [f'{_DERMA}/Dermatologie — Probeklausur 1.md', f'{_DERMA}/Dermatologie — Probeklausur 2.md'],
+        'minuten': 60,
+        'ordner': 'C:/Users/joong/altfragen/derma',
+        'durchgang': '2027-07-03',
     },
 }
