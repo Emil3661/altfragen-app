@@ -22,6 +22,7 @@ _GYN = 'G:/Meine Ablage/01 Studium/Fächer/Frauenheilkunde'
 _UMWELT = 'G:/Meine Ablage/01 Studium/Fächer/Umweltmedizin'
 _HUMGEN = 'G:/Meine Ablage/01 Studium/Fächer/Humangenetik'
 _NEURO = 'G:/Meine Ablage/01 Studium/Fächer/Neurologie'
+_PAED = 'G:/Meine Ablage/01 Studium/Fächer/Kinderheilkunde'
 
 FAECHER = {
     'mibi': {
@@ -85,6 +86,18 @@ FAECHER = {
         'probeklausuren': [f'{_NEURO}/Neurologie — Probeklausur 1.md', f'{_NEURO}/Neurologie — Probeklausur 2.md'],
         'minuten': 60,
         'ordner': 'C:/Users/joong/altfragen/neuro',
+        'durchgang': '2027-06-12',
+    },
+    'paed': {
+        'name': 'Kinderheilkunde',
+        'klausur': '2027-07-02',
+        'klausurInfo': '40 Fragen in 60 Minuten · Termin vorläufig',
+        'plan': 'rang',
+        'lernskript': f'{_PAED}/Kinderheilkunde — Lernskript.md',
+        'probeklausuren': [f'{_PAED}/Kinderheilkunde — Probeklausur 1.md',
+                           f'{_PAED}/Kinderheilkunde — Probeklausur 2.md'],
+        'minuten': 60,
+        'ordner': 'C:/Users/joong/altfragen/paed',
         'durchgang': '2027-06-12',
     },
 }
