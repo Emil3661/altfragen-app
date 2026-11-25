@@ -24,6 +24,7 @@ _HUMGEN = 'G:/Meine Ablage/01 Studium/Fächer/Humangenetik'
 _NEURO = 'G:/Meine Ablage/01 Studium/Fächer/Neurologie'
 _PAED = 'G:/Meine Ablage/01 Studium/Fächer/Kinderheilkunde'
 _DERMA = 'G:/Meine Ablage/01 Studium/Fächer/Dermatologie'
+_ANAE = 'G:/Meine Ablage/01 Studium/Fächer/Anästhesie'
 
 FAECHER = {
     'mibi': {
@@ -111,5 +112,17 @@ FAECHER = {
         'minuten': 60,
         'ordner': 'C:/Users/joong/altfragen/derma',
         'durchgang': '2027-07-03',
+    },
+    'anae': {
+        'name': 'Anästhesiologie',
+        'klausur': '2027-07-12',
+        'klausurInfo': '60 Fragen in 90 Minuten · Termin vorläufig',
+        'plan': 'rang',
+        'lernskript': f'{_ANAE}/Anästhesiologie — Lernskript.md',
+        'probeklausuren': [f'{_ANAE}/Anästhesiologie — Probeklausur 1.md',
+                           f'{_ANAE}/Anästhesiologie — Probeklausur 2.md'],
+        'minuten': 90,
+        'ordner': 'C:/Users/joong/altfragen/anae',
+        'durchgang': '2027-06-26',
     },
 }
