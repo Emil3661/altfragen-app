@@ -28,6 +28,7 @@ _ANAE = 'G:/Meine Ablage/01 Studium/Fächer/Anästhesie'
 _CHIR = 'G:/Meine Ablage/01 Studium/Fächer/Chirurgie'
 _ALLG = 'G:/Meine Ablage/01 Studium/Fächer/Allgemeinmedizin'
 _FRAUEN = 'G:/Meine Ablage/01 Studium/Fächer/Frauenheilkunde'
+_GOEK = 'G:/Meine Ablage/01 Studium/Fächer/Gesundheitsökonomie'
 
 FAECHER = {
     'mibi': {
@@ -162,5 +163,17 @@ FAECHER = {
         'minuten': 75,
         'ordner': 'C:/Users/joong/altfragen/frauen',
         'durchgang': '2027-06-19',
+    },
+    'goek': {
+        'name': 'Gesundheitsökonomie',
+        'klausur': '2027-07-14',
+        'klausurInfo': '35 Fragen in 90 Minuten · Termin vorläufig',
+        'plan': 'rang',
+        'lernskript': f'{_GOEK}/Gesundheitsökonomie — Lernskript.md',
+        'probeklausuren': [f'{_GOEK}/Gesundheitsökonomie — Probeklausur 1.md',
+                           f'{_GOEK}/Gesundheitsökonomie — Probeklausur 2.md'],
+        'minuten': 90,
+        'ordner': 'C:/Users/joong/altfragen/gesoek',
+        'durchgang': '2027-06-26',
     },
 }
