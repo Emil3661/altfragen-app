@@ -27,6 +27,7 @@ _DERMA = 'G:/Meine Ablage/01 Studium/Fächer/Dermatologie'
 _ANAE = 'G:/Meine Ablage/01 Studium/Fächer/Anästhesie'
 _CHIR = 'G:/Meine Ablage/01 Studium/Fächer/Chirurgie'
 _ALLG = 'G:/Meine Ablage/01 Studium/Fächer/Allgemeinmedizin'
+_FRAUEN = 'G:/Meine Ablage/01 Studium/Fächer/Frauenheilkunde'
 
 FAECHER = {
     'mibi': {
@@ -148,6 +149,18 @@ FAECHER = {
                            f'{_ALLG}/Allgemeinmedizin — Probeklausur 2.md'],
         'minuten': 60,
         'ordner': 'C:/Users/joong/altfragen/allg',
+        'durchgang': '2027-06-19',
+    },
+    'frauen': {
+        'name': 'Frauenheilkunde',
+        'klausur': '2027-07-05',
+        'klausurInfo': '50 Fragen in 75 Minuten · Termin vorläufig',
+        'plan': 'rang',
+        'lernskript': f'{_FRAUEN}/Frauenheilkunde — Lernskript.md',
+        'probeklausuren': [f'{_FRAUEN}/Frauenheilkunde — Probeklausur 1.md',
+                           f'{_FRAUEN}/Frauenheilkunde — Probeklausur 2.md'],
+        'minuten': 75,
+        'ordner': 'C:/Users/joong/altfragen/frauen',
         'durchgang': '2027-06-19',
     },
 }
