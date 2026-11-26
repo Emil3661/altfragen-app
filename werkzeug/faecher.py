@@ -26,6 +26,7 @@ _PAED = 'G:/Meine Ablage/01 Studium/Fächer/Kinderheilkunde'
 _DERMA = 'G:/Meine Ablage/01 Studium/Fächer/Dermatologie'
 _ANAE = 'G:/Meine Ablage/01 Studium/Fächer/Anästhesie'
 _CHIR = 'G:/Meine Ablage/01 Studium/Fächer/Chirurgie'
+_ALLG = 'G:/Meine Ablage/01 Studium/Fächer/Allgemeinmedizin'
 
 FAECHER = {
     'mibi': {
@@ -136,5 +137,17 @@ FAECHER = {
         'minuten': 90,
         'ordner': 'C:/Users/joong/altfragen/chir',
         'durchgang': '2027-06-12',
+    },
+    'allg': {
+        'name': 'Allgemeinmedizin',
+        'klausur': '2027-07-07',
+        'klausurInfo': '40 Fragen in 60 Minuten · Termin vorläufig',
+        'plan': 'rang',
+        'lernskript': f'{_ALLG}/Allgemeinmedizin — Lernskript.md',
+        'probeklausuren': [f'{_ALLG}/Allgemeinmedizin — Probeklausur 1.md',
+                           f'{_ALLG}/Allgemeinmedizin — Probeklausur 2.md'],
+        'minuten': 60,
+        'ordner': 'C:/Users/joong/altfragen/allg',
+        'durchgang': '2027-06-19',
     },
 }
