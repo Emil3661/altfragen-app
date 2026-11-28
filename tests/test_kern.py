@@ -530,5 +530,16 @@ class Plan(unittest.TestCase):
         self.assertEqual((tp['ziel'], tp['tage'], tp['pro_tag'], tp['bis_klausur']), ('2027-02-11', 4, 1, 4))
 
 
+class RankingHaken(unittest.TestCase):
+    """Der Haken des Themenrankings ist ein Schritt wie Kern und Meditricks und muss den Abgleich überstehen."""
+
+    def test_haken_bleibt_beim_zusammenfuehren(self):
+        a = {'fach': 'test', 'versuche': {}, 'schritte': {'4': {'ranking': {'wert': 'ja', 'zeit': '2026-11-28T10:00:00Z'}}}}
+        b = {'fach': 'test', 'versuche': {}, 'schritte': {'4': {'kern': {'wert': 'ja', 'zeit': '2026-11-27T10:00:00Z'}}}}
+        for r in (kern.zusammenfuehren(a, b), kern.zusammenfuehren(b, a)):
+            self.assertEqual(r['schritte']['4']['ranking']['wert'], 'ja')
+            self.assertEqual(r['schritte']['4']['kern']['wert'], 'ja')
+
+
 if __name__ == '__main__':
     unittest.main()

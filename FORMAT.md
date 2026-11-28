@@ -111,7 +111,7 @@ EXTRA: <Fakt>
        "quelle": "app|docs|probe", "geaendert": "<ISO>", "geloescht": null}
     ]
   },
-  "schritte": {"1": {"meditricks": {"wert": "ja|keins|null", "zeit": "<ISO>"}, "kern": {"wert": "ja|null", "zeit": "<ISO>"}}},
+  "schritte": {"1": {"meditricks": {"wert": "ja|keins|null", "zeit": "<ISO>"}, "kern": {"wert": "ja|null", "zeit": "<ISO>"}, "ranking": {"wert": "ja|null", "zeit": "<ISO>"}}},
   "sterne": {"1.Q05": {"wert": true, "zeit": "<ISO>"}},
   "md": {"zeit": "<ISO>", "basis": {"1.Q05": "<Schlüssel>"}, "ueberschrieben": {"1.Q05": ["<Schlüssel>"]}}
 }
@@ -121,6 +121,7 @@ EXTRA: <Fakt>
 - `falsch` nur bei offenen Fragen (Selbsteinschätzung). `unsicher` nur noch aus früheren Fassungen, siehe Stern
 - `geloescht` = Zeitpunkt des Zurücknehmens. Gelöschte Versuche bleiben als Grabstein stehen, damit das Zusammenführen sie nicht zurückholt
 - Versuche aus Docs: `id` = `docs:<frageId>:<Schlüssel der Antwort, immer u0>:<Zahl der nicht gelöschten Versuche davor>`, damit zwei Geräte denselben Haken nicht doppelt anlegen, auch wenn sie die .md zu verschiedenen Zeiten lesen
+- `ranking` = Haken des Themas im Bildschirm Ranking. Ein Merker wie der Stern, Plan und Sammlungen bleiben davon unberührt. Ältere Fassungen der App führen das Feld beim Zusammenführen mit, weil `schritte` je Feld zusammengeführt wird
 - Unbrauchbare Versuche (ohne `id`, ohne lesbare `zeit`, `wahl` keine Liste) und Sterne (`wert` nicht `true`/`false`, ohne lesbare `zeit`) werden beim Laden verworfen
 
 ### Stern

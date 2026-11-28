@@ -542,12 +542,63 @@ const Kern = (() => {
     return aus.sort(nachUebung);
   }
 
+  // ---------- Themenranking ----------
+  // Rein: Fragendaten, Fortschritt. Raus: eine Zeile je Thema nach Rang mit erwarteten Fragen, kumuliertem Anteil
+  // und Trend aus "meta" sowie dem Haken (Schritt "ranking"). Fehlt "kumuliert" in meta, wird er aus den
+  // erwarteten Fragen bis zu diesem Rang aufsummiert. Fehlende Angaben bleiben null.
+  function rankingZeilen(daten, f) {
+    const zahl = s => Number(s.replace(',', '.'));
+    let summe = 0;
+    return [...daten.themen].sort((a, b) => a.rang - b.rang).map(t => {
+      const m = t.meta || '';
+      const erw = /erwartet ([\d.,]+) von (\d+)/.exec(m);
+      const kum = /kumuliert (\d+) %/.exec(m);
+      const trend = /Trend (\S+)/.exec(m);
+      const erwartet = erw ? zahl(erw[1]) : null;
+      const von = erw ? Number(erw[2]) : null;
+      if (erwartet !== null) summe += erwartet;
+      return {
+        rang: t.rang, titel: t.titel, stufe: t.stufe || null, erwartet, von,
+        kumuliert: kum ? Number(kum[1]) : (von ? Math.round(100 * summe / von) : null),
+        trend: trend ? trend[1] : null,
+        abgehakt: schrittWert(f, t.rang, 'ranking') === 'ja',
+      };
+    });
+  }
+
+  // ---------- Fächerliste ----------
+  // Semester einer Klausur aus dem Datum (JJJJ-MM-TT): Januar bis April gehört zum Wintersemester davor,
+  // Mai bis September zum Sommersemester, Oktober bis Dezember zum Wintersemester, das dann beginnt.
+  function semesterVon(tag) {
+    const zwei = n => String((n + 100) % 100).padStart(2, '0');
+    const j = Number(tag.slice(2, 4));
+    const mo = Number(tag.slice(5, 7));
+    if (mo <= 4) return `WiSe ${zwei(j - 1)}/${zwei(j)}`;
+    if (mo <= 9) return `SoSe ${zwei(j)}`;
+    return `WiSe ${zwei(j)}/${zwei(j + 1)}`;
+  }
+  // Rein: [{name, klausur, …}], heute. Raus: [{titel, faecher}], kommende Klausuren nach Datum und je Semester
+  // gruppiert, vergangene zuletzt unter „Vorbei“, die jüngste zuerst. localeCompare vergleicht Texte nach Alphabet.
+  function faecherGruppen(liste, heute) {
+    const tag = x => String(x.klausur || '');
+    const kommend = liste.filter(x => tag(x) >= heute).sort((a, b) => tag(a).localeCompare(tag(b)) || a.name.localeCompare(b.name, 'de'));
+    const vorbei = liste.filter(x => tag(x) < heute).sort((a, b) => tag(b).localeCompare(tag(a)));
+    const gruppen = [];
+    for (const x of kommend) {
+      const s = semesterVon(tag(x));
+      if (!gruppen.length || gruppen[gruppen.length - 1].titel !== s) gruppen.push({ titel: s, faecher: [] });
+      gruppen[gruppen.length - 1].faecher.push(x);
+    }
+    if (vorbei.length) gruppen.push({ titel: 'Vorbei', faecher: vorbei });
+    return gruppen;
+  }
+
   return {
     LEER, normal, schluessel, zustandAus, erschliessen, lernskriptLesen, lernskriptSchreiben, ergebnis, ergebnisse,
     beantwortet, falschZahl, tagVon, plusTage, tageZwischen, gueltige, letzterVersuch, leererFortschritt,
     vervollstaendigen, zusammenfuehren, abgleichen, sollZustand, versuchBuchen, versuchAendern, versuchZuruecknehmen,
     schrittSetzen, schrittWert, sternAn, sternSetzen, planListe, themaStand, naechstesThema, tempo, mischen,
-    falschSammlung, markiertSammlung,
+    falschSammlung, markiertSammlung, rankingZeilen, semesterVon, faecherGruppen,
   };
 })();
 if (typeof module !== 'undefined') module.exports = Kern;

@@ -1,6 +1,5 @@
-/* Gestaltung für das Handy: große Tippflächen, helles und dunkles Schema nach Systemeinstellung. */
-:root { --stern: #c88a00; --grund: #f6f7f8; --flaeche: #ffffff; --text: #16202a; --leise: #5c6873; --linie: #d9dee3; --akzent: #0b6e6e; --akzent-text: #ffffff; --gut: #1a7f4b; --gut-grund: #e5f4ec; --schlecht: #b3372f; --schlecht-grund: #fbe9e7; --wahl: #dff1f1; --auf: #ffffff; }
-@media (prefers-color-scheme: dark) { :root { --stern: #f2c14e; --grund: #11161b; --flaeche: #1a2128; --text: #e8edf1; --leise: #9aa6b1; --linie: #2c353e; --akzent: #38b2ac; --akzent-text: #06201f; --gut: #4ecb8d; --gut-grund: #13301f; --schlecht: #ef7d74; --schlecht-grund: #3a1b18; --wahl: #12302f; --auf: #0b1a12; } }
+/* Gestaltung für das Handy: große Tippflächen, immer dunkel, fast schwarzer Grund. */
+:root { color-scheme: dark; --stern: #f2c14e; --grund: #000000; --flaeche: #101417; --text: #e8edf1; --leise: #929ea9; --linie: #252c33; --akzent: #38b2ac; --akzent-text: #06201f; --gut: #4ecb8d; --gut-grund: #12291c; --schlecht: #ef7d74; --schlecht-grund: #33191a; --wahl: #0f2a29; --auf: #0b1a12; }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--grund); color: var(--text); font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -90,3 +89,22 @@ p { margin: 0; }
 .zahl { font-size: 22px; font-weight: 650; }
 .zahl-zeichen.falsch { color: var(--schlecht); }
 .zahl-zeichen.markiert { color: var(--stern); }
+/* Startseite: Fachname als Kopf zum Antippen, darunter die vier Wege als Raster aus zwei Spalten */
+.fachwahl { font: inherit; font-size: 27px; font-weight: 700; line-height: 1.2; margin: 6px 0 0; padding: 0; min-height: 44px; border: 0; background: none; color: var(--text); text-align: left; cursor: pointer; display: flex; align-items: center; gap: 8px; touch-action: manipulation; }
+.fachwahl .pfeil { font-size: 16px; color: var(--leise); }
+.raster { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.balken.an { border-color: var(--akzent); }
+/* Ranking: schmale Tabelle, Thema antippbar, Haken rechts; abgehakte Zeilen treten zurück */
+.rang { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rang th { font-size: 12px; font-weight: 650; color: var(--leise); text-align: right; padding: 0 4px 4px; }
+.rang td { padding: 0 4px; border-top: 1px solid var(--linie); text-align: right; vertical-align: middle; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rang .t { text-align: left; white-space: normal; width: 100%; }
+.rang .nr { color: var(--leise); text-align: right; padding-left: 0; }
+.rang .trend { color: var(--leise); }
+.rang .h { padding: 0; width: 44px; }
+.rang tr.stufe td { border-top: 0; padding: 12px 0 4px; font-size: 12px; font-weight: 650; color: var(--leise); text-align: left; }
+.rang tr.ab td:not(.h) { opacity: .4; }
+.thema-knopf { font: inherit; display: block; width: 100%; padding: 9px 0; border: 0; background: none; color: var(--text); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.haken { width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+.kasten { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--leise); color: var(--auf); font-size: 14px; font-weight: 800; line-height: 18px; text-align: center; }
+.haken.an .kasten { background: var(--gut); border-color: var(--gut); }

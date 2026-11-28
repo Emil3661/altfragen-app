@@ -310,3 +310,46 @@ test('Thema: zählt die letzte Antwort nach Zeit, leere Wahl macht nichts beantw
   const st = K.themaStand(daten.themen[0], f);
   assert.deepStrictEqual([st.gesamt, st.beantwortet, st.richtig, st.falsch, st.naechste.id, st.fertig], [3, 1, 1, 0, '1.Q02', false]);
 });
+
+test('Ranking: Zahlen aus meta, kumuliert ersatzweise summiert, Haken als Schritt', () => {
+  const d = { themen: [
+    { rang: 2, titel: 'Zwei', stufe: 'B', meta: 'erwartet 1,7 von 40 Fragen · Trend fallend' },
+    { rang: 1, titel: 'Eins', stufe: 'A', meta: 'erwartet 3,1 von 40 Fragen · 32 Altfragen · Trend steigend · kumuliert 8 %' },
+    { rang: 3, titel: 'Drei', stufe: null, meta: '8 Fragen, 15 Nennungen' },
+  ] };
+  const f = K.leererFortschritt('test');
+  K.schrittSetzen(f, 2, 'ranking', 'ja', '2026-11-28T10:00:00Z');
+  const z = K.rankingZeilen(d, f);
+  assert.deepStrictEqual(z.map(x => x.rang), [1, 2, 3]);
+  assert.deepStrictEqual([z[0].erwartet, z[0].von, z[0].kumuliert, z[0].trend, z[0].abgehakt], [3.1, 40, 8, 'steigend', false]);
+  assert.deepStrictEqual([z[1].erwartet, z[1].kumuliert, z[1].trend, z[1].abgehakt], [1.7, 12, 'fallend', true]);
+  assert.deepStrictEqual([z[2].erwartet, z[2].von, z[2].kumuliert, z[2].trend, z[2].stufe], [null, null, null, null, null]);
+});
+
+test('Ranking-Haken: übersteht das Zusammenführen mit einem Stand ohne ihn, späteres Abwählen gewinnt', () => {
+  const a = { fach: 'test', versuche: {}, schritte: { 4: { ranking: { wert: 'ja', zeit: '2026-11-28T10:00:00Z' } } } };
+  const b = { fach: 'test', versuche: {}, schritte: { 4: { kern: { wert: 'ja', zeit: '2026-11-27T10:00:00Z' } } } };
+  for (const g of [K.zusammenfuehren(a, b), K.zusammenfuehren(b, a)]) {
+    assert.strictEqual(K.schrittWert(g, 4, 'ranking'), 'ja');
+    assert.strictEqual(K.schrittWert(g, 4, 'kern'), 'ja');
+  }
+  const c = { fach: 'test', versuche: {}, schritte: { 4: { ranking: { wert: null, zeit: '2026-11-28T11:00:00Z' } } } };
+  assert.strictEqual(K.schrittWert(K.zusammenfuehren(a, c), 4, 'ranking'), null);
+  assert.strictEqual(K.schrittWert(K.zusammenfuehren(c, a), 4, 'ranking'), null);
+});
+
+test('Fächer: nach Klausurdatum je Semester, vergangene zuletzt', () => {
+  assert.strictEqual(K.semesterVon('2027-02-12'), 'WiSe 26/27');
+  assert.strictEqual(K.semesterVon('2027-07-02'), 'SoSe 27');
+  assert.strictEqual(K.semesterVon('2026-12-01'), 'WiSe 26/27');
+  assert.strictEqual(K.semesterVon('2000-03-01'), 'WiSe 99/00');
+  const liste = [
+    { name: 'Neuro', klausur: '2027-06-30' }, { name: 'Chir', klausur: '2027-06-28' },
+    { name: 'MiBi', klausur: '2027-02-12' }, { name: 'Humgen', klausur: '2027-02-12' },
+    { name: 'Alt', klausur: '2026-07-01' }, { name: 'Älter', klausur: '2026-02-01' },
+  ];
+  const g = K.faecherGruppen(liste, '2026-11-28');
+  assert.deepStrictEqual(g.map(x => x.titel), ['WiSe 26/27', 'SoSe 27', 'Vorbei']);
+  assert.deepStrictEqual(g.map(x => x.faecher.map(y => y.name)), [['Humgen', 'MiBi'], ['Chir', 'Neuro'], ['Alt', 'Älter']]);
+  assert.deepStrictEqual(K.faecherGruppen(liste, '2027-02-12')[0].faecher.map(y => y.name), ['Humgen', 'MiBi']);
+});

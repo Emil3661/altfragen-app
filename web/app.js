@@ -6,7 +6,7 @@
   const M = Markdown;
   const D = Drive;
   const BEREICH = 'https://www.googleapis.com/auth/drive.file';
-  const VERSION = '1.7';
+  const VERSION = '1.8';
 
   // ---------- Ablage im Browser (IndexedDB) ----------
   // Schlüssel-Wert-Speicher: konfig, fragen:<fach>, fortschritt:<fach>. Größer als localStorage erlaubt.
@@ -374,14 +374,11 @@
     const h = heute();
     const tp = K.tempo(d, f, h);
     const weiter = K.naechstesThema(d, f);
-    const teile = [el('h1', { text: 'Altfragen' })];
-    if (Object.keys(faecher).length > 1) {
-      teile.push(el('div', { class: 'segment' }, ...Object.values(faecher).map(x => el('button', {
-        class: 'knopf' + (x.daten.fach === aktivFach ? ' an' : ''),
-        onclick: () => { aktivFach = x.daten.fach; localStorage.setItem('altfragen_fach', aktivFach); zeige('start', {}, true); },
-        text: x.daten.name,
-      }))));
-    }
+    // Kopf: Name des Fachs; bei mehreren Fächern antippbar, führt zur Fächerliste
+    const teile = [Object.keys(faecher).length > 1
+      ? el('button', { class: 'fachwahl', onclick: () => zeige('faecher'), 'aria-label': `${d.name}, Fach wechseln` },
+        el('span', { text: d.name }), el('span', { class: 'pfeil', text: '▾' }))
+      : el('h1', { text: d.name })];
     teile.push(el('p', { class: 'unter', text: `Klausur ${datum(d.klausur)} · noch ${tp.bisKlausur} Tage · ${d.klausurInfo}` }));
 
     // Sammlungen als Zahlen: ✗ je falsch, ☆ markiert, antippen startet eine Runde
@@ -406,10 +403,91 @@
     pk.append(el('p', { class: 'unter klein', text: tp.offen ? `Erster Durchgang bis ${datum(tp.ziel)}: ${tp.offen} Fragen offen, etwa ${tp.proTag} pro Tag` : `Erster Durchgang vollständig` }));
     teile.push(pk);
 
-    teile.push(el('div', { class: 'leiste' },
+    teile.push(el('div', { class: 'raster' },
       knopf('Themen', () => zeige('themen')),
+      knopf('Ranking', () => zeige('ranking')),
       knopf('Probeklausur', () => zeige('probe-wahl')),
       knopf('Einstellungen', () => zeige('einstellungen'))));
+    teile.push(statusZeile());
+    return teile;
+  }
+
+  // ---------- Bildschirm: Fächer ----------
+  // Alle Fächer nach Klausurdatum, je Semester, vergangene zuletzt. Antippen wählt das Fach und führt zur Startseite
+  function bildFaecher() {
+    const h = heute();
+    const teile = [kopf('Fächer')];
+    const liste = Object.values(faecher).map(x => ({ name: x.daten.name, klausur: x.daten.klausur, fa: x }));
+    for (const g of K.faecherGruppen(liste, h)) {
+      teile.push(el('h3', { text: g.titel }));
+      for (const x of g.faecher) {
+        const id = x.fa.daten.fach;
+        let beantwortet = 0;
+        let gesamt = 0;
+        for (const t of x.fa.daten.themen) {
+          const st = K.themaStand(t, x.fa.fortschritt);
+          beantwortet += st.beantwortet;
+          gesamt += st.gesamt;
+        }
+        const tage = x.klausur ? K.tageZwischen(h, x.klausur) : null;
+        const wann = !x.klausur ? '' : `${datum(x.klausur)} · ` + (tage > 0 ? `noch ${tage} Tage` : tage === 0 ? 'heute' : 'vorbei');
+        const wert = el('span', { class: 'balken-wert' });
+        wert.style.width = `${gesamt ? Math.round(100 * beantwortet / gesamt) : 0}%`;
+        teile.push(el('button', {
+          class: 'balken' + (id === aktivFach ? ' an' : ''),
+          onclick: () => { aktivFach = id; localStorage.setItem('altfragen_fach', aktivFach); zurueck(); },
+        },
+        el('span', { class: 'balken-name' }, el('strong', { text: x.name })),
+        el('span', { class: 'balken-zahl', text: `${wann} · ${beantwortet}/${gesamt} Fragen` }),
+        el('span', { class: 'balken-spur' }, wert)));
+      }
+    }
+    teile.push(statusZeile());
+    return teile;
+  }
+
+  // ---------- Bildschirm: Ranking ----------
+  // Kleine Fassung der Ranking-Tabelle: Rang, Thema, erwartete Fragen, kumulierter Anteil, Trend, Haken.
+  // Der Haken ist ein Schritt je Thema ("ranking") und wird wie Meditricks und Kern mit Drive abgeglichen.
+  const TREND = { steigend: '↑', fallend: '↓', stabil: '→' };
+  function bildRanking() {
+    const fa = fach();
+    const d = fa.daten;
+    const zeilen = K.rankingZeilen(d, fa.fortschritt);
+    // Zahl mit Komma und mindestens einer Nachkommastelle wie in der Ranking-Tabelle: 2 → „2,0“, 1.9 → „1,9“
+    const komma = z => z.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+    const teile = [kopf(d.name + ': Ranking')];
+    const haken = zeilen.filter(z => z.abgehakt);
+    const von = (zeilen.find(z => z.von) || {}).von;
+    // Summe der erwarteten Fragen aller abgehakten Themen, auf eine Nachkommastelle gerundet
+    const erw = Math.round(10 * haken.reduce((s, z) => s + (z.erwartet || 0), 0)) / 10;
+    teile.push(el('p', { class: 'unter', text: `${haken.length} von ${zeilen.length} abgehakt` + (von ? ` · zusammen ${komma(erw)} von ${von} erwarteten Fragen` : '') }));
+    const th = (text, klasse = '') => el('th', { class: klasse, text });
+    const kopfzeile = el('tr', {}, th('#', 'nr'), th('Thema', 't'), th('erw.'), th('kum.'), th(''), th(''));
+    const rumpf = el('tbody');
+    let stufe;
+    for (const z of zeilen) {
+      // Zwischenzeile, sobald die Stufe wechselt (A, B, C); Fächer ohne Stufen haben keine
+      if (z.stufe && z.stufe !== stufe) {
+        stufe = z.stufe;
+        rumpf.append(el('tr', { class: 'stufe' }, el('td', { colspan: 6, text: `Stufe ${stufe}` + (stufe === 'C' ? ' · nur bei Zeit' : '') })));
+      }
+      const umschalten = () => {
+        K.schrittSetzen(fach().fortschritt, z.rang, 'ranking', z.abgehakt ? null : 'ja', jetzt());
+        lokalSpeichern(aktivFach);
+        abgleichPlanen();
+        zeige('ranking', {}, true, true);
+      };
+      rumpf.append(el('tr', { class: z.abgehakt ? 'ab' : '' },
+        el('td', { class: 'nr', text: String(z.rang) }),
+        el('td', { class: 't' }, el('button', { class: 'thema-knopf', onclick: () => zeige('thema', { rang: z.rang }), text: z.titel })),
+        el('td', { text: z.erwartet === null ? '–' : komma(z.erwartet) }),
+        el('td', { text: z.kumuliert === null ? '–' : `${z.kumuliert} %` }),
+        el('td', { class: 'trend', title: z.trend || '', text: TREND[z.trend] || '' }),
+        el('td', { class: 'h' }, el('button', { class: 'haken' + (z.abgehakt ? ' an' : ''), onclick: umschalten, 'aria-pressed': z.abgehakt ? 'true' : 'false', 'aria-label': `${z.titel} abhaken` },
+          el('span', { class: 'kasten', text: z.abgehakt ? '✓' : '' })))));
+    }
+    teile.push(el('div', { class: 'tabelle-rang' }, el('table', { class: 'rang' }, el('thead', {}, kopfzeile), rumpf)));
     teile.push(statusZeile());
     return teile;
   }
@@ -552,6 +630,13 @@
   function rundeStarten(art, liste, pos = 0, rang = null, probe = null) {
     if (!liste.length) return;
     runde = { art, liste, pos, rang, versuch: {}, auswahl: {}, aufgedeckt: {}, samen: {}, mischen: art !== 'thema', probe };
+    // Runde eines Themas, etwa von der Startseite aus: Das Thema kommt ungezeichnet in den Verlauf darunter,
+    // damit ‹ und die Zurück-Geste des Handys aus den Fragen direkt dorthin führen
+    const oben = stapel[stapel.length - 1];
+    if (rang && !probe && !(oben && oben.name === 'thema' && oben.param.rang === rang)) {
+      stapel.push({ name: 'thema', param: { rang } });
+      history.pushState({ n: stapel.length }, '');
+    }
     zeige('frage');
   }
 
@@ -769,8 +854,9 @@
     return leiste;
   }
 
-  // Runde verlassen: Thema und Sammlungen zur Zusammenfassung. Eine laufende Probeklausur wird nach
-  // Rückfrage ohne Wertung abgebrochen, zurück zur Auswahl.
+  // Runde verlassen: Thema und Sammlungen direkt zurück zur vorigen Seite (beim Thema also zum Thema),
+  // wie mit der Zurück-Geste. Eine laufende Probeklausur wird nach Rückfrage ohne Wertung abgebrochen,
+  // zurück zur Auswahl; eine abgegebene zeigt wieder ihr Ergebnis.
   function rundeVerlassen() {
     if (runde && runde.probe && !runde.probe.abgegeben) {
       if (!bestaetigen('Probeklausur abbrechen? Die Antworten werden nicht gewertet. Zum Bestätigen noch einmal tippen.')) return;
@@ -779,7 +865,8 @@
       zurueckAuf(stapel.length - 1);
       return;
     }
-    zeige('runde-ende', {}, true);
+    if (runde && runde.probe) { zeige('runde-ende', {}, true); return; }
+    zurueck();
   }
   // Rückfrage ohne Browserdialog: zweimal tippen innerhalb von drei Sekunden
   let bestaetigt = 0;
@@ -905,7 +992,7 @@
 
   const BILDER = {
     start: bildStart, themen: bildThemen, thema: bildThema, frage: bildFrage, 'runde-ende': bildRundeEnde,
-    'probe-wahl': bildProbeWahl, einstellungen: bildEinstellungen,
+    'probe-wahl': bildProbeWahl, einstellungen: bildEinstellungen, faecher: bildFaecher, ranking: bildRanking,
   };
 
   // ---------- Start ----------
